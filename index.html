@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0f1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GZ Patron">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.webmanifest">
+<title>GameZone CI — Patron V4</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+:root{--bg:#0a0f1e;--surface:#0f1628;--card:#162040;--border:#1e2d52;--gold:#f59e0b;--gl:#fcd34d;--green:#10b981;--red:#ef4444;--blue:#6366f1;--purple:#8b5cf6;--text:#f0f4ff;--muted:#64748b;--sub:#94a3b8;--fd:'Rajdhani',sans-serif;--fb:'Inter',sans-serif;--r:14px;--rs:9px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);display:flex;flex-direction:column}
+#login-screen,#setup-screen{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:500;padding:32px 20px}
+.login-icon{font-size:52px;margin-bottom:10px}
+.login-logo{font-family:var(--fd);font-size:28px;font-weight:700;letter-spacing:3px;color:var(--gold);margin-bottom:4px}
+.login-sub{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:32px}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:24px 20px;width:100%;max-width:340px}
+.ig{margin-bottom:12px}
+.ig label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px}
+.ig input,.ig select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);padding:11px 13px;font-family:var(--fb);font-size:14px;outline:none}
+.ig input:focus,.ig select:focus{border-color:var(--gold)}
+.ig select option{background:var(--bg)}
+.btn-login{width:100%;padding:13px;background:var(--gold);color:#000;border:none;border-radius:var(--rs);font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;margin-top:6px}
+.lerr{text-align:center;font-size:12px;color:var(--red);margin-top:8px;min-height:18px}
+#app{display:none;flex-direction:column;height:100%}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 16px 10px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
+.tlogo{font-family:var(--fd);font-size:20px;font-weight:700;letter-spacing:2px;color:var(--gold)}
+.tbadge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:3px 9px;border-radius:20px;background:rgba(245,158,11,.15);color:var(--gold)}
+.tclock{font-family:var(--fd);font-size:17px;color:var(--sub);letter-spacing:1px}
+.btn-out{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer}
+.scroll{flex:1;overflow-y:auto;padding:14px 12px 80px;-webkit-overflow-scrolling:touch}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);display:flex;z-index:50}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0;cursor:pointer;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.8px;gap:4px}
+.ni.active{color:var(--gold)}
+.ni-icon{font-size:20px;line-height:1}
+.page{display:none}.page.active{display:block}
+.sh{display:flex;align-items:center;justify-content:space-between;margin:14px 0 10px}
+.sh h2{font-family:var(--fd);font-size:16px;font-weight:600;letter-spacing:1px;color:var(--sub)}
+.sh span{font-size:11px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px}
+/* KPI */
+.kpi-box{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:10px;position:relative;overflow:hidden}
+.kpi-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gl))}
+.kpi-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:5px}
+.kpi-val{font-family:var(--fd);font-size:36px;font-weight:700;color:var(--gold);line-height:1}
+.kpi-sub{font-size:12px;color:var(--sub);margin-top:3px}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.st{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.sl{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px}
+.sv{font-family:var(--fd);font-size:22px;font-weight:700;line-height:1}
+.ss{font-size:9px;color:var(--muted);margin-top:2px}
+/* ROWS */
+.crow{display:flex;align-items:center;padding:13px 15px;border-bottom:1px solid rgba(30,45,82,.5);gap:10px}
+.crow:last-child{border-bottom:none}
+.btn-edit{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);color:var(--blue);padding:6px 10px;border-radius:7px;font-size:12px;cursor:pointer}
+.btn-del{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);padding:6px 10px;border-radius:7px;font-size:12px;cursor:pointer}
+.btn-add{width:100%;padding:13px;background:rgba(245,158,11,.1);border:1px dashed var(--gold);border-radius:var(--r);color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;margin-top:4px}
+/* PRISE STATUS */
+.prise-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.pd-on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.pd-off{background:var(--muted)}
+.pd-none{background:var(--border)}
+/* BADGE */
+.badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:2px 8px;border-radius:20px}
+.b-on{background:rgba(16,185,129,.15);color:var(--green)}
+.b-off{background:rgba(100,116,139,.1);color:var(--muted)}
+.b-noconf{background:rgba(239,68,68,.1);color:var(--red)}
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:flex-end;justify-content:center}
+.mo.open{display:flex}
+.ms{background:var(--surface);border:1px solid var(--border);border-radius:20px 20px 0 0;padding:22px 18px 36px;width:100%;max-width:480px;animation:su .25s ease;max-height:90vh;overflow-y:auto}
+@keyframes su{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.mh{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px}
+.mt{font-family:var(--fd);font-size:20px;font-weight:700;color:var(--gold);margin-bottom:16px;letter-spacing:1px}
+.ma{display:flex;gap:10px;margin-top:18px}
+.btn-cancel{padding:12px 18px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:13px}
+.btn-ok{flex:1;padding:12px;background:var(--gold);color:#000;border:none;border-radius:var(--rs);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:1px;cursor:pointer}
+/* INFO BOX */
+.info-box{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:var(--rs);padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--sub);line-height:1.6}
+.info-box b{color:var(--blue)}
+/* TUYA TEST */
+.test-btn{width:100%;padding:11px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:var(--rs);color:var(--green);font-size:12px;font-weight:600;cursor:pointer;margin-top:8px}
+.test-result{font-size:11px;margin-top:8px;padding:8px 12px;border-radius:8px;display:none}
+.tr-ok{background:rgba(16,185,129,.1);color:var(--green);border:1px solid rgba(16,185,129,.2)}
+.tr-err{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+/* TOAST */
+.toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);border:1px solid var(--gold);border-radius:30px;padding:10px 20px;font-size:13px;color:var(--gold);z-index:400;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* GÉRANT CARD */
+.gcrow{display:flex;align-items:center;padding:13px 15px;border-bottom:1px solid rgba(30,45,82,.5);gap:10px}
+.gcrow:last-child{border-bottom:none}
+.gava{width:36px;height:36px;border-radius:50%;background:rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--blue);font-family:var(--fd);flex-shrink:0}
+/* TARIF */
+.trow{display:flex;align-items:center;padding:12px 15px;border-bottom:1px solid rgba(30,45,82,.5);gap:8px}
+.trow:last-child{border-bottom:none}
+.ctabs{display:flex;gap:6px;margin-bottom:12px}
+.ctab{flex:1;text-align:center;padding:9px 4px;border-radius:var(--rs);border:1px solid var(--border);background:var(--card);font-size:12px;font-weight:600;color:var(--sub);cursor:pointer}
+.ctab.sel{border-color:var(--gold);color:var(--gold);background:rgba(245,158,11,.1)}
+.tbadge2{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:20px;background:rgba(245,158,11,.15);color:var(--gold);margin-left:6px}
+/* HOME POSTE ROW */
+.hpr{display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid rgba(30,45,82,.5);gap:10px}
+.hpr:last-child{border-bottom:none}
+
+/* V4 — Tableau de bord type Gérant + gestion directe + rapport + historique */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--bg)}
+body{min-height:100vh;min-height:100dvh;min-height:-webkit-fill-available;overscroll-behavior:none}
+#app{height:100vh;height:100dvh;min-height:-webkit-fill-available}
+.topbar{padding-top:calc(13px + env(safe-area-inset-top));padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+.scroll{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right));padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+.bnav{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom)}
+.ms{padding-bottom:calc(36px + env(safe-area-inset-bottom));padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right))}
+.ig input,.ig select,input,select,textarea{font-size:16px!important}
+button,.ni,.ctl-btn{touch-action:manipulation}
+.control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ctl-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px;position:relative;overflow:hidden}
+.ctl-card.active{border-color:var(--green)}.ctl-card.paused{border-color:var(--gold)}
+.ctl-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.ctl-num{font-family:var(--fd);font-size:19px;font-weight:700;color:#c084fc}
+.ctl-type{font-size:10px;color:var(--muted)}
+.ctl-timer{font-family:var(--fd);font-size:26px;font-weight:700;letter-spacing:1px;margin:7px 0 2px}
+.ctl-timer.on{color:#f8fafc}.ctl-timer.pause{color:var(--gold)}.ctl-timer.free{color:var(--muted);font-size:18px}
+.ctl-client{font-size:11px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:16px}
+.ctl-money{font-family:var(--fd);font-size:14px;font-weight:700;color:#22c55e;margin:0;white-space:nowrap}.ctl-timer-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0 3px}
+.ctl-actions{display:flex;flex-wrap:wrap;gap:5px}
+.ctl-btn{flex:1;min-width:42%;border-radius:7px;padding:8px 5px;font-size:10px;font-weight:700;border:1px solid var(--border);cursor:pointer}
+.ctl-start{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:var(--green)}
+.ctl-plus{background:rgba(59,130,246,.14);border-color:rgba(59,130,246,.42);color:#60a5fa}
+.ctl-pause{background:rgba(234,179,8,.14);border-color:rgba(234,179,8,.42);color:#facc15}
+.ctl-resume{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:var(--green)}
+.ctl-off{background:rgba(15,23,42,.92);border-color:rgba(248,113,113,.45);color:#fca5a5}.ctl-cancel{background:rgba(239,68,68,.13);border-color:rgba(239,68,68,.42);color:#f87171}.owner-cancel-box{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.20);border-radius:10px;padding:11px 12px;margin-bottom:12px;font-size:11px;color:var(--sub);line-height:1.55}.owner-cancel-box b{color:var(--text)}.owner-cancel-summary{font-family:var(--fd);font-size:15px;font-weight:700;color:#f87171;margin-top:5px}.owner-danger-btn{flex:2;padding:12px;background:#7f1d1d;color:#fff;border:1px solid rgba(239,68,68,.55);border-radius:var(--rs);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.6px;cursor:pointer}.owner-danger-btn:disabled{opacity:.35;cursor:not-allowed}
+.dctl-grid,.pctl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:7px}
+.dctl-opt,.pctl-opt{background:var(--card);border:2px solid var(--border);border-radius:var(--rs);padding:10px 5px;text-align:center;cursor:pointer}
+.dctl-opt.sel,.pctl-opt.sel{border-color:var(--gold);background:rgba(245,158,11,.10)}
+.dctl-min{font-family:var(--fd);font-size:15px;font-weight:700}.dctl-price{font-size:10px;color:var(--muted);margin-top:2px}
+.pctl-grid{grid-template-columns:repeat(2,1fr)}.pctl-opt{font-size:11px;font-weight:600}
+.owner-sync{font-size:10px;color:var(--muted);margin-top:-3px;margin-bottom:10px;line-height:1.45}
+@media(max-width:360px){.control-grid{grid-template-columns:1fr}.ni{font-size:8px;padding:9px 0}.ni-icon{font-size:18px}}
+@supports (-webkit-touch-callout:none){html,body{min-height:-webkit-fill-available}#app{height:-webkit-fill-available}.scroll{-webkit-overflow-scrolling:touch}}
+
+
+/* V4 — tableau de bord propriétaire calqué sur l'interface Gérant */
+.bnav{overflow-x:auto;scrollbar-width:none}.bnav::-webkit-scrollbar{display:none}.ni{min-width:72px;flex:0 0 72px}
+.owner-dash-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.owner-stat{background:#1a1a2e;border:1px solid #252540;border-radius:14px;padding:13px 14px;position:relative;overflow:hidden;min-height:105px}
+.owner-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}.owner-stat.purple::before{background:#c084fc}.owner-stat.green::before{background:#22c55e}.owner-stat.blue::before{background:#3b82f6}.owner-stat.yellow::before{background:#eab308}
+.owner-stat-label{font-size:9px;text-transform:uppercase;letter-spacing:1.3px;color:#6b7280;margin-bottom:5px}.owner-stat-value{font-family:var(--fd);font-size:30px;font-weight:700;line-height:1}.owner-stat.purple .owner-stat-value{color:#c084fc}.owner-stat.green .owner-stat-value{color:#22c55e}.owner-stat.blue .owner-stat-value{color:#3b82f6}.owner-stat.yellow .owner-stat-value{color:#eab308}
+.owner-stat-sub{font-size:10px;color:#8b8fa3;margin-top:5px;line-height:1.35}.owner-usage{margin-top:5px;max-height:58px;overflow-y:auto;scrollbar-width:none}.owner-usage::-webkit-scrollbar{display:none}.owner-usage-row{display:flex;justify-content:space-between;gap:6px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:9px}.owner-usage-row:last-child{border-bottom:0}.owner-usage-name{color:#eab308;font-family:var(--fd);font-size:11px;font-weight:700;white-space:nowrap}.owner-usage-val{color:#f1f0ff;white-space:nowrap;text-align:right}
+.owner-day-strip{display:flex;justify-content:space-between;gap:10px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.25);border-radius:10px;padding:9px 12px;margin:0 0 14px;font-size:11px;color:#9ca3af}.owner-day-strip b{font-family:var(--fd);font-size:13px;color:#f1f0ff}
+.owner-outage-btn{width:100%;padding:11px 12px;margin:0 0 15px;border-radius:10px;border:1px solid rgba(234,179,8,.45);background:rgba(234,179,8,.10);color:#facc15;font-weight:700;font-size:11px;letter-spacing:.4px;cursor:pointer;text-transform:uppercase}
+.owner-jbox{background:#1a1a2e;border:1px solid #252540;border-radius:14px;overflow:hidden;margin-top:5px}.owner-jhdr{padding:11px 14px;border-bottom:1px solid #252540;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#6b7280}.owner-je{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.05)}.owner-je:last-child{border-bottom:0}.owner-jtime{font-size:10px;color:#6b7280;min-width:34px}.owner-jdot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0}.owner-jdot.g{background:#22c55e}.owner-jdot.y{background:#eab308}.owner-jdot.r{background:#ef4444}.owner-jdot.b{background:#3b82f6}.owner-jdot.p{background:#c084fc}.owner-jbody{flex:1;min-width:0}.owner-jmain{font-size:12px;font-weight:600}.owner-jdetail{font-size:10px;color:#7f8498;line-height:1.45;margin-top:2px;overflow-wrap:anywhere}.owner-jlive{font-size:10px;color:#22c55e;font-weight:700;margin-top:3px}.owner-jamount{font-family:var(--fd);font-size:12px;color:#c084fc;font-weight:700;white-space:nowrap}.owner-jmotif{font-size:10px;color:#facc15;margin-top:3px}.owner-jactive{background:rgba(34,197,94,.05);border-left:3px solid #22c55e}.owner-jpause{background:rgba(234,179,8,.05);border-left:3px solid #eab308}
+.owner-report-card{background:#1a1a2e;border:1px solid #252540;border-radius:14px;overflow:hidden;margin-bottom:12px}.owner-rrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}.owner-rrow:last-child{border-bottom:0}.owner-rkey{color:#9ca3af}.owner-rval{font-family:var(--fd);font-size:13px;font-weight:700}.owner-rval.green{color:#22c55e}.owner-rval.purple{color:#c084fc}.owner-rval.yellow{color:#eab308}.owner-rval.blue{color:#3b82f6}
+.owner-cancel-card{background:rgba(239,68,68,.055);border:1px solid rgba(239,68,68,.18);border-radius:10px;padding:10px 12px;margin:8px 10px}.owner-cancel-head{display:flex;justify-content:space-between;gap:8px}.owner-cancel-post{font-family:var(--fd);font-size:14px;font-weight:700;color:#f87171}.owner-cancel-money{font-family:var(--fd);font-size:14px;font-weight:700;color:#f87171}.owner-cancel-meta{font-size:10px;color:#7f8498;line-height:1.5;margin-top:3px}.owner-cancel-reason{font-size:11px;color:#facc15;margin-top:4px}
+.owner-hist-list{display:flex;flex-direction:column;gap:8px;padding:9px}.owner-hist-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 11px}.owner-hist-head{display:flex;justify-content:space-between;gap:8px}.owner-hist-title{font-family:var(--fd);font-size:14px;font-weight:700}.owner-hist-amount{font-family:var(--fd);font-size:14px;font-weight:700;color:#22c55e;white-space:nowrap}.owner-hist-meta{font-size:10px;color:#6b7280;line-height:1.45;margin-top:4px}.owner-hist-postes{font-size:10px;color:#9ca3af;line-height:1.5;margin-top:5px}.owner-hist-activities{margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:5px}.owner-hist-act{font-size:10px;line-height:1.45;color:#9ca3af;background:rgba(255,255,255,.02);border-radius:7px;padding:6px 7px}.owner-hist-act b{color:#f1f0ff}.owner-hist-act .tm{color:#c084fc;font-weight:700}.owner-hist-zero{padding:14px;text-align:center;color:#6b7280;font-size:12px}
+.ctl-progress{height:4px;background:#252540;border-radius:4px;overflow:hidden;margin:7px 0}.ctl-progress-bar{height:100%;background:#22c55e;border-radius:4px;transition:width 1s linear}.ctl-card.paused .ctl-progress-bar{background:#eab308}
+@media(max-width:390px){.owner-stat{padding:11px 12px}.owner-stat-value{font-size:27px}.owner-stat-sub{font-size:9px}.ni{min-width:68px;flex-basis:68px}}
+
+</style>
+</head>
+<body>
+
+<div id="fb-loading" style="position:fixed;inset:0;background:#0d0d1a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:900;gap:10px">
+  <div style="font-family:'Rajdhani',sans-serif;font-size:20px;color:#c084fc;letter-spacing:2px">👑 GAMEZONE CI</div>
+  <div style="font-size:12px;color:#9ca3af">Connexion au serveur...</div>
+</div>
+
+<div id="setup-screen">
+  <div class="login-icon">🕹️</div>
+  <div class="login-logo">CONFIGURATION</div>
+  <div class="login-sub">Première mise en service</div>
+  <div class="login-card">
+    <div class="ig"><label>Nom de votre salle</label><input type="text" id="su-name" placeholder="Ex: Cyber Lounge Cocody" autocomplete="off"></div>
+    <div class="ig"><label>Clé d'activation</label><input type="text" id="su-key" placeholder="GZ-XXXXX" autocomplete="off" style="text-transform:uppercase"></div>
+    <div class="ig"><label>Identifiant patron (à créer)</label><input type="text" id="su-id" placeholder="Ex: patron" autocomplete="off"></div>
+    <div class="ig"><label>Mot de passe patron (à créer)</label><input type="password" id="su-pass" placeholder="••••••" autocomplete="off"></div>
+    <button class="btn-login" onclick="doSetup()">Activer et configurer</button>
+    <div class="lerr" id="suerr"></div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:14px;text-align:center">La clé d'activation vous a été fournie par votre fournisseur.</div>
+</div>
+
+<div id="login-screen">
+  <div class="login-icon">👑</div>
+  <div class="login-logo" id="ll-logo">GAMEZONE CI</div>
+  <div class="login-sub">Espace Propriétaire</div>
+  <div class="login-card">
+    <div class="ig"><label>Identifiant</label><input type="text" id="lu" placeholder="patron" autocomplete="off"></div>
+    <div class="ig"><label>Mot de passe</label><input type="password" id="lp" placeholder="••••••"></div>
+    <button class="btn-login" onclick="doLogin()">Accéder</button>
+    <div class="lerr" id="lerr"></div>
+  </div>
+  <div style="margin-top:20px;padding:12px 16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:10px;max-width:340px;width:100%;text-align:center;cursor:pointer" onclick="resetRoomKey()">
+    <div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:2px">⚠️ Nouvelle installation pour un autre commerce ?</div>
+    <div style="font-size:11px;color:var(--muted);text-decoration:underline">Réinitialiser cet appareil</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="tlogo" id="tb-logo">👑 GZ</div>
+      <span class="tbadge">Patron</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="tclock" id="clock">00:00</div>
+      <button class="btn-out" onclick="doLogout()">⏏</button>
+    </div>
+  </div>
+
+  <div class="scroll" id="scroll">
+
+    <!-- ACCUEIL -->
+    <div class="page" id="page-home">
+      <div class="kpi-box">
+        <div class="kpi-lbl">Recettes du jour</div>
+        <div class="kpi-val" id="k-rec">0</div>
+        <div class="kpi-sub">FCFA · <span id="k-sess">0</span> sessions terminées</div>
+      </div>
+      <div class="stats-row">
+        <div class="st"><div class="sl">Postes actifs</div><div class="sv" style="color:var(--green)" id="k-act">0</div><div class="ss" id="k-tot">/ 0</div></div>
+        <div class="st"><div class="sl">Prises ON</div><div class="sv" style="color:var(--blue)" id="k-prises">0</div><div class="ss">connectées</div></div>
+        <div class="st"><div class="sl">Gérants</div><div class="sv" style="color:var(--gold)" id="k-ger">0</div><div class="ss">configurés</div></div>
+      </div>
+      <div class="sh"><h2>Recettes</h2></div>
+      <div class="card" id="rec-summary" style="padding:12px 16px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:13px;color:var(--muted)">Cette semaine</span><span style="font-weight:700" id="k-rec-week">0 FCFA</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="font-size:13px;color:var(--muted)">Total</span><span style="font-weight:700" id="k-rec-total">0 FCFA</span></div>
+      </div>
+      <div class="sh"><h2>État des postes</h2></div>
+      <div class="card" id="home-postes"></div>
+      <div class="sh"><h2>Recettes par poste</h2></div>
+      <div class="card" id="home-postes-rev" style="padding:4px 0"></div>
+    </div>
+
+    <!-- GESTION DIRECTE PROPRIÉTAIRE -->
+    <div class="page active" id="page-control">
+      <div class="owner-dash-grid">
+        <div class="owner-stat purple"><div class="owner-stat-label">Actifs</div><div class="owner-stat-value" id="od-act">0</div><div class="owner-stat-sub" id="od-act-list">Aucun poste actif</div></div>
+        <div class="owner-stat green"><div class="owner-stat-label">Recettes</div><div class="owner-stat-value" id="od-rec">0</div><div class="owner-stat-sub">FCFA aujourd'hui</div></div>
+        <div class="owner-stat blue"><div class="owner-stat-label">Prises ON</div><div class="owner-stat-value" id="od-prises">0</div><div class="owner-stat-sub" id="od-prises-list">Aucune télévision allumée</div></div>
+        <div class="owner-stat yellow"><div class="owner-stat-label">Utilisation postes</div><div class="owner-usage" id="od-usage"></div><div class="owner-stat-sub">aujourd'hui</div></div>
+      </div>
+      <div class="owner-day-strip"><span>Hier : <b id="od-yesterday">0 F</b></span><span>Mois : <b id="od-month">0 F</b></span></div>
+      <button class="owner-outage-btn" onclick="ownerPauseAllForPowerOutage()">⚡ COUPURE DE COURANT — METTRE TOUS LES POSTES EN PAUSE</button>
+      <div style="font-size:10px;color:var(--muted);margin:-4px 2px 10px;line-height:1.45">⏻ <b style="color:#fca5a5">OFF TV</b> est réservé au Patron : il éteint la TV, met le temps à 00:00 et libère le poste sans retirer la recette.</div>
+      <div class="sh"><h2>Postes</h2><span id="ctl-active-count">0 actif</span></div>
+      <div class="control-grid" id="control-postes"></div>
+      <div class="sh" style="margin-top:18px"><h2>Activité</h2><span>07h00 → 06h59</span></div>
+      <div class="owner-jbox"><div class="owner-jhdr">Journal de session</div><div id="owner-journal-list"></div></div>
+    </div>
+
+    <!-- RAPPORT PROPRIÉTAIRE -->
+    <div class="page" id="page-report">
+      <div class="sh"><h2>Rapport</h2><span id="or-date">—</span></div>
+      <div class="owner-report-card">
+        <div class="owner-rrow"><span class="owner-rkey">Recettes du jour</span><span class="owner-rval green" id="or-rec">0 FCFA</span></div>
+        <div class="owner-rrow"><span class="owner-rkey">Postes actifs</span><span class="owner-rval purple" id="or-active">0</span></div>
+        <div class="owner-rrow"><span class="owner-rkey">Sessions terminées</span><span class="owner-rval" id="or-done">0</span></div>
+        <div class="owner-rrow"><span class="owner-rkey">Télévisions / prises ON</span><span class="owner-rval blue" id="or-plugs">0</span></div>
+        <div class="owner-rrow"><span class="owner-rkey">Compte</span><span class="owner-rval yellow">Patron</span></div>
+      </div>
+      <div class="sh"><h2>Paiements</h2></div><div class="owner-report-card" id="or-payments"></div>
+      <div class="sh"><h2>Recettes</h2></div>
+      <div class="owner-report-card">
+        <div class="owner-rrow"><span class="owner-rkey">Aujourd'hui</span><span class="owner-rval green" id="or-day">0 FCFA</span></div>
+        <div class="owner-rrow"><span class="owner-rkey">Hier</span><span class="owner-rval purple" id="or-yesterday">0 FCFA</span></div>
+        <div class="owner-rrow"><span class="owner-rkey">Cette semaine</span><span class="owner-rval green" id="or-week">0 FCFA</span></div>
+        <div class="owner-rrow"><span class="owner-rkey">Ce mois</span><span class="owner-rval yellow" id="or-month">0 FCFA</span></div>
+        <div class="owner-rrow"><span class="owner-rkey">Total général</span><span class="owner-rval green" id="or-total">0 FCFA</span></div>
+      </div>
+      <div class="sh"><h2>Recettes par poste</h2></div><div class="owner-report-card" id="or-postes"></div>
+      <div class="sh"><h2>Annulations du jour</h2><span id="or-cancel-count">0</span></div><div class="owner-report-card" id="or-cancels"></div>
+    </div>
+
+    <!-- HISTORIQUE PROPRIÉTAIRE -->
+    <div class="page" id="page-history">
+      <div class="sh"><h2>Historique</h2><span>07h00 → 06h59</span></div>
+      <div class="sh"><h2>Par jour</h2></div><div class="owner-report-card"><div class="owner-hist-list" id="oh-days"></div></div>
+      <div class="sh"><h2>Par mois</h2></div><div class="owner-report-card"><div class="owner-hist-list" id="oh-months"></div></div>
+    </div>
+
+    <!-- POSTES + PRISES -->
+    <div class="page" id="page-postes">
+      <div class="sh"><h2>Postes & Prises Tuya</h2><span id="nb-postes">0</span></div>
+      <div class="info-box">
+        🔌 Chaque poste peut être lié à une <b>Smart Plug Tuya</b>. Renseignez l'<b>IP locale</b>, le <b>Device ID</b> et la <b>Local Key</b> de chaque prise pour activer la coupure automatique.
+      </div>
+      <div class="card" id="list-postes"></div>
+      <button class="btn-add" onclick="openModalPoste()">+ Ajouter un poste</button>
+    </div>
+
+    <!-- TARIFS -->
+    <div class="page" id="page-tarifs">
+      <div class="sh"><h2>Tarifs</h2><span id="nb-tarifs">0</span></div>
+      <div class="ctabs" id="console-tabs"></div>
+      <div class="card" id="list-tarifs"></div>
+      <button class="btn-add" onclick="openModalTarif()">+ Ajouter un tarif</button>
+    </div>
+
+    <!-- GÉRANTS -->
+    <div class="page" id="page-gerants">
+      <div class="sh"><h2>Gérants</h2><span id="nb-gerants">0</span></div>
+      <div class="card" id="list-gerants"></div>
+      <button class="btn-add" onclick="openModalGerant()">+ Ajouter un gérant</button>
+    </div>
+
+    <!-- PARAMÈTRES -->
+    <div class="page" id="page-params">
+      <div class="sh"><h2>Paramètres</h2></div>
+      <div class="info-box">
+        🔑 Créez votre propre compte développeur gratuit sur <b>iot.tuya.com</b>, puis renseignez ici votre <b>Client ID</b> et <b>Client Secret</b> (visibles dans votre projet Tuya Cloud). Ces identifiants restent propres à votre compte et ne sont partagés avec personne d'autre.
+      </div>
+      <div class="ig"><label>Tuya Client ID</label><input type="text" id="pr-tuya-id" placeholder="Depuis iot.tuya.com" autocomplete="off"></div>
+      <div class="ig"><label>Tuya Client Secret</label><input type="text" id="pr-tuya-secret" placeholder="Depuis iot.tuya.com" autocomplete="off"></div>
+      <button class="btn-ok" style="width:100%;margin-top:12px" onclick="saveTuyaConfig()">💾 Enregistrer</button>
+      <div class="test-result" id="tuya-config-result"></div>
+    </div>
+
+  </div>
+
+  <nav class="bnav">
+    <div class="ni active" onclick="showPage('control',this)"><span class="ni-icon">🎮</span>Gestion</div>
+    <div class="ni" onclick="showPage('report',this)"><span class="ni-icon">📊</span>Rapport</div>
+    <div class="ni" onclick="showPage('history',this)"><span class="ni-icon">📜</span>Historique</div>
+    <div class="ni" onclick="showPage('postes',this)"><span class="ni-icon">🔌</span>Postes</div>
+    <div class="ni" onclick="showPage('tarifs',this)"><span class="ni-icon">💰</span>Tarifs</div>
+    <div class="ni" onclick="showPage('gerants',this)"><span class="ni-icon">👥</span>Gérants</div>
+    <div class="ni" onclick="showPage('params',this)"><span class="ni-icon">⚙️</span>Réglages</div>
+  </nav>
+</div>
+
+<!-- MODAL DÉMARRAGE DIRECT PATRON -->
+<div class="mo" id="mo-owner-start">
+  <div class="ms">
+    <div class="mh"></div>
+    <div class="mt" id="owner-start-title">Nouvelle session</div>
+    <div class="ig"><label>Nom du client</label><input type="text" id="owner-client" placeholder="Ex: Koné Moussa" autocomplete="off"></div>
+    <div class="ig"><label>Durée</label><div class="dctl-grid" id="owner-start-durations"></div></div>
+    <div class="ig"><label>Paiement</label><div class="pctl-grid" id="owner-start-payments"></div></div>
+    <div class="ma"><button class="btn-cancel" onclick="closeModal('mo-owner-start')">Annuler</button><button class="btn-ok" onclick="ownerConfirmStart()">Activer ✓</button></div>
+  </div>
+</div>
+
+<!-- MODAL AJOUT TEMPS DIRECT PATRON -->
+<div class="mo" id="mo-owner-plus">
+  <div class="ms">
+    <div class="mh"></div>
+    <div class="mt" id="owner-plus-title">Ajouter du temps</div>
+    <div class="ig"><label>Temps à ajouter</label><div class="dctl-grid" id="owner-plus-durations"></div></div>
+    <div class="ig"><label>Paiement</label><div class="pctl-grid" id="owner-plus-payments"></div></div>
+    <div class="ma"><button class="btn-cancel" onclick="closeModal('mo-owner-plus')">Annuler</button><button class="btn-ok" onclick="ownerConfirmPlus()">Ajouter le temps ✓</button></div>
+  </div>
+</div>
+
+<!-- MODAL ANNULATION DIRECTE PATRON -->
+<div class="mo" id="mo-owner-cancel">
+  <div class="ms">
+    <div class="mh"></div>
+    <div class="mt" id="owner-cancel-title" style="color:#f87171">Annuler la session</div>
+    <div class="owner-cancel-box">
+      <div id="owner-cancel-client">Client : —</div>
+      <div id="owner-cancel-time">Temps restant : —</div>
+      <div class="owner-cancel-summary" id="owner-cancel-amount">Montant à retirer : —</div>
+      <div style="margin-top:5px">L'annulation libère le poste, éteint la TV et retire automatiquement le montant de cette session de la recette du jour.</div>
+    </div>
+    <div class="ig">
+      <label>Motif de l'annulation — obligatoire</label>
+      <input type="text" id="owner-cancel-reason" placeholder="Ex: TV en panne, changement de poste..." autocomplete="off" oninput="ownerUpdateCancelButton()">
+      <div id="owner-cancel-help" style="font-size:10px;color:#facc15;margin-top:5px">⚠️ Écrivez le motif pour pouvoir annuler.</div>
+    </div>
+    <div class="ma">
+      <button class="btn-cancel" style="flex:1" onclick="closeModal('mo-owner-cancel')">Retour</button>
+      <button id="owner-cancel-confirm" class="owner-danger-btn" disabled onclick="ownerConfirmCancel()">ANNULER + RETIRER LE MONTANT</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL POSTE -->
+<div class="mo" id="mo-poste">
+  <div class="ms">
+    <div class="mh"></div>
+    <div class="mt" id="mo-poste-title">Nouveau poste</div>
+    <div class="ig"><label>Numéro / Nom du poste</label><input type="text" id="p-num" placeholder="Ex: P01"></div>
+    <div class="ig"><label>Type de console</label>
+      <select id="p-type">
+        <option value="PS5">PS5</option>
+        <option value="PS4">PS4</option>
+        <option value="PS3">PS3</option>
+        <option value="Autres">Autres</option>
+      </select>
+    </div>
+
+    <div style="margin:16px 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">🔌 Configuration Prise Tuya (optionnel)</div>
+    <div class="info-box">Laissez vide si vous n'avez pas encore la prise. Vous pourrez configurer plus tard.</div>
+    <div class="ig"><label>IP locale de la prise</label><input type="text" id="p-ip" placeholder="Ex: 192.168.1.45" inputmode="decimal"></div>
+    <div class="ig"><label>Device ID</label><input type="text" id="p-devid" placeholder="Depuis iot.tuya.com" autocomplete="off"></div>
+    <div class="ig"><label>Local Key</label><input type="text" id="p-key" placeholder="Clé locale Tuya" autocomplete="off"></div>
+    <div class="ig">
+      <label>Version protocole Tuya</label>
+      <select id="p-ver">
+        <option value="3.3">3.3 (la plus courante)</option>
+        <option value="3.1">3.1</option>
+        <option value="3.4">3.4</option>
+      </select>
+    </div>
+    <button class="test-btn" onclick="testerPrise()">🧪 Tester la connexion prise</button>
+    <div class="test-result" id="test-result"></div>
+    <input type="hidden" id="p-edit-idx" value="-1">
+    <div class="ma">
+      <button class="btn-cancel" onclick="closeModal('mo-poste')">Annuler</button>
+      <button class="btn-ok" onclick="savePoste()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TARIF -->
+<div class="mo" id="mo-tarif">
+  <div class="ms">
+    <div class="mh"></div>
+    <div class="mt" id="mo-tarif-title">Nouveau tarif</div>
+    <div class="ig"><label>Console</label>
+      <select id="t-console">
+        <option value="PS5">PS5</option>
+        <option value="PS4">PS4</option>
+        <option value="PS3">PS3</option>
+        <option value="Autres">Autres</option>
+      </select>
+    </div>
+    <div class="ig"><label>Durée (en minutes)</label><input type="number" id="t-min" placeholder="Ex: 60" min="1" inputmode="numeric"></div>
+    <div class="ig"><label>Label affiché</label><input type="text" id="t-lbl" placeholder="Ex: 1 heure"></div>
+    <div class="ig"><label>Prix (FCFA)</label><input type="number" id="t-prix" placeholder="Ex: 900" min="0" inputmode="numeric"></div>
+    <input type="hidden" id="t-edit-idx" value="-1">
+    <div class="ma">
+      <button class="btn-cancel" onclick="closeModal('mo-tarif')">Annuler</button>
+      <button class="btn-ok" onclick="saveTarif()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GÉRANT -->
+<div class="mo" id="mo-gerant">
+  <div class="ms">
+    <div class="mh"></div>
+    <div class="mt" id="mo-gerant-title">Nouveau gérant</div>
+    <div class="ig"><label>Nom complet</label><input type="text" id="g-nom" placeholder="Ex: Konaté Ibrahima" autocomplete="off"></div>
+    <div class="ig"><label>Identifiant</label><input type="text" id="g-id" placeholder="Ex: gerant1" autocomplete="off"></div>
+    <div class="ig"><label>Mot de passe</label><input type="password" id="g-pass" placeholder="••••"></div>
+    <input type="hidden" id="g-edit-idx" value="-1">
+    <div class="ma">
+      <button class="btn-cancel" onclick="closeModal('mo-gerant')">Annuler</button>
+      <button class="btn-ok" onclick="saveGerant()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// ══════════════════════════════════════
+// STOCKAGE PARTAGÉ — FIREBASE (synchro temps réel)
+// ══════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyCJo7cZltS5x8OslLuz9SVNedkhaxTARqU",
+  authDomain: "acarde-de-gestion.firebaseapp.com",
+  databaseURL: "https://acarde-de-gestion-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "acarde-de-gestion",
+  storageBucket: "acarde-de-gestion.firebasestorage.app",
+  messagingSenderId: "138514400044",
+  appId: "1:138514400044:web:56e52f60cecc73b0436289"
+};
+firebase.initializeApp(firebaseConfig);
+let fbRoot=null;
+
+const DB={
+  _cache:{},
+  _ready:false,
+  _readyCbs:[],
+  _changeCb:null,
+  get(k){ return this._cache[k]!==undefined ? this._cache[k] : null; },
+  set(k,v){
+    this._cache[k]=v;
+    if(fbRoot) fbRoot.child(k).set(v).catch(e=>console.log('Erreur Firebase:',e));
+  },
+  onReady(cb){ this._ready ? cb() : this._readyCbs.push(cb); },
+  onChange(cb){ this._changeCb=cb; }
+};
+
+function connectTenant(tenantKey){
+  fbRoot = firebase.database().ref('gz_'+tenantKey);
+  fbRoot.on('value', function(snap){
+    DB._cache = snap.val() || {};
+    if(!DB._ready){
+      DB._ready=true;
+      DB._readyCbs.forEach(cb=>cb());
+      DB._readyCbs=[];
+    } else if(DB._changeCb){
+      DB._changeCb();
+    }
+  }, function(err){
+    console.log('Erreur connexion Firebase:', err);
+    showToast('⚠️ Connexion au serveur impossible');
+  });
+}
+
+function today(){return businessDate(new Date()).toDateString()}
+let loggedIn=false;
+const CONSOLES=['PS5','PS4','PS3','Autres'];
+let activeConsoleTab='PS5';
+
+// ══════════════════════════════════════
+// V2 — SYNCHRO COMPATIBLE APP GÉRANT + GESTION DIRECTE PATRON
+// ══════════════════════════════════════
+const OWNER_PAYS=[
+  {id:'especes',lbl:'Espèces',emoji:'💵'},
+  {id:'orange',lbl:'Orange Money',emoji:'🟠'},
+  {id:'mtn',lbl:'MTN MoMo',emoji:'🟡'},
+  {id:'wave',lbl:'Wave',emoji:'🌊'}
+];
+const TUYA_WORKER_URL='https://snowy-bush-885d.kassiherberta.workers.dev';
+let currentTenantKey=null;
+let ownerPosteIdx=-1, ownerSelMin=0, ownerSelPay='especes', ownerPlusMin=0, ownerPlusPay='especes', ownerCancelIdx=-1;
+let ownerTimerBusy=false;
+let ownerRuntimeDayKey='';
+let ownerRolloverBusy=false;
+const ownerFinishLocks=new Set();
+const ownerCancelLocks=new Set();
+
+function deepClone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
+function money(v){const n=Number(String(v==null?0:v).replace(/[^0-9.-]/g,''));return Number.isFinite(n)?Math.max(0,Math.round(n)):0;}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function remotePostKey(num){try{return encodeURIComponent(String(num==null?'':num));}catch(e){return String(num||'').replace(/[^A-Za-z0-9_-]/g,'_');}}
+function remoteStamp(x){if(!x||typeof x!=='object')return 0;return Math.max(Number(x.updatedAt)||0,Number(x.startedAt)||0);}
+function activeForPoste(poste,idx){
+  const arr=Array.isArray(DB.get('active_postes'))?DB.get('active_postes'):[];
+  const map=(DB.get('active_by_poste')&&typeof DB.get('active_by_poste')==='object')?DB.get('active_by_poste'):{};
+  const legacy=arr[idx]||null, mapped=map[remotePostKey(poste&&poste.num)]||null;
+  if(mapped&&legacy)return remoteStamp(mapped)>=remoteStamp(legacy)?mapped:legacy;
+  return mapped||legacy||{};
+}
+function rootReadActive(root,poste,idx){
+  root=root||{};const arr=Array.isArray(root.active_postes)?root.active_postes:[];
+  const map=(root.active_by_poste&&typeof root.active_by_poste==='object')?root.active_by_poste:{};
+  const mapped=map[remotePostKey(poste&&poste.num)]||null;let legacy=null;
+  const sid=poste&&poste.sessionId;if(sid)legacy=arr.find(x=>x&&x.sessionId===sid)||null;
+  if(!legacy&&Number.isInteger(idx)&&idx>=0)legacy=arr[idx]||null;
+  if(mapped&&legacy)return remoteStamp(mapped)>=remoteStamp(legacy)?mapped:legacy;
+  return mapped||legacy||{};
+}
+function rootWriteActive(root,poste,idx,state){
+  root=root||{};const arr=Array.isArray(root.active_postes)?root.active_postes.slice():[];
+  const sid=(state&&state.sessionId)||(poste&&poste.sessionId)||'';let ai=-1;
+  if(sid)ai=arr.findIndex(x=>x&&x.sessionId===sid);if(ai<0&&Number.isInteger(idx)&&idx>=0)ai=idx;if(ai<0)ai=arr.length;
+  const st=Object.assign({},state||{},{updatedAt:Number((state||{}).updatedAt)||Date.now()});
+  arr[ai]=deepClone(st);root.active_postes=arr;
+  root.active_by_poste=(root.active_by_poste&&typeof root.active_by_poste==='object')?Object.assign({},root.active_by_poste):{};
+  root.active_by_poste[remotePostKey(poste&&poste.num)]=deepClone(st);return st;
+}
+function blankRemoteActive(base){return Object.assign({},base||{},{actif:false,client:'',finTs:0,tempsTotal:0,dureeMin:0,paused:false,pauseRemainingSec:0,montantSession:0,montantJourSession:0,paiementsSession:{},sessionId:'',startedAt:0,updatedAt:Date.now()});}
+function businessDate(d=new Date()){return new Date(d.getTime()-(7*60*60*1000));}
+function businessDateKey(d=new Date()){return dateKeyISO(businessDate(d));}
+function remainingActive(a){if(!a||!a.actif)return 0;if(a.paused)return Math.max(0,Math.floor(Number(a.pauseRemainingSec)||0));return Math.max(0,Math.ceil(((Number(a.finTs)||0)-Date.now())/1000));}
+function fmtRest(sec){sec=Math.max(0,Math.floor(Number(sec)||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return h>0?`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;}
+function freshSessionSnapshotFromRoot(root){
+  const old=(root&&root.sessions&&root.sessions.date===today())?root.sessions:{};
+  return {recettes:money(old.recettes),count:Math.max(0,Number(old.count)||0),date:today(),parPoste:Object.assign({},old.parPoste||{}),sessionsParPoste:Object.assign({},old.sessionsParPoste||{}),payStats:Object.assign({},old.payStats||{})};
+}
+function ownerSubtractPaymentBreakdown(source,detail,amount){
+  const out=Object.assign({},source||{});let left=money(amount);
+  Object.entries(detail||{}).forEach(([id,val])=>{if(left<=0)return;const take=Math.min(money(val),left,money(out[id]));if(take>0){out[id]=Math.max(0,money(out[id])-take);left-=take;}});
+  if(left>0){for(const id of Object.keys(out)){if(left<=0)break;const take=Math.min(left,money(out[id]));out[id]=Math.max(0,money(out[id])-take);left-=take;}}
+  return out;
+}
+function ownerSubtractPosteBreakdown(source,num,amount){const out=Object.assign({},source||{});out[num]=Math.max(0,money(out[num])-money(amount));if(out[num]===0)delete out[num];return out;}
+function ownerFmtClock(ts){if(!ts)return '—';const d=new Date(Number(ts));return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;}
+
+function ownerTarifs(poste){return (DB.get('tarifs')||[]).filter(t=>(t.console||'PS5')===(poste.type||'PS5')).sort((a,b)=>(Number(a.min)||0)-(Number(b.min)||0));}
+function ownerPersistActivity(main,detail,amount,meta={}){
+  if(!fbRoot)return;const now=Date.now();const entry=Object.assign({id:'pat-'+now+'-'+Math.random().toString(36).slice(2,8),ts:now,dateKey:businessDateKey(new Date(now)),t:new Date(now).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),color:'p',main,detail,amount,gerant:'Patron'},meta||{});
+  try{fbRoot.child('activity_daily').child(entry.dateKey).child(entry.id).set(entry);}catch(e){console.log('Historique patron:',e);}
+}
+
+async function ownerTuyaCommand(poste,turnOn){
+  if(!poste||!poste.devid||!currentTenantKey)return false;
+  try{const r=await fetch(TUYA_WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenantKey:currentTenantKey,devid:poste.devid,turnOn})});const d=await r.json();return !!d.success;}catch(e){console.log('Tuya patron:',e);return false;}
+}
+function ownerPendingKey(){return 'gz_patron_pending_off_'+String(currentTenantKey||'');}
+function ownerQueueOff(poste){try{const q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');q['post'+remotePostKey(poste.num)]= {num:poste.num,devid:poste.devid,ip:poste.ip||'',ts:Date.now()};localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}}
+function ownerClearOff(poste){try{const q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');delete q['post'+remotePostKey(poste.num)];localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}}
+async function ownerReliableOff(poste){
+  if(!poste||!poste.devid)return true;
+  for(let k=0;k<4;k++){if(await ownerTuyaCommand(poste,false)){ownerClearOff(poste);return true;}await new Promise(r=>setTimeout(r,450*(k+1)));}
+  ownerQueueOff(poste);return false;
+}
+async function ownerRetryPendingOff(){
+  if(!navigator.onLine)return;let q={};try{q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');}catch(e){}
+  for(const key of Object.keys(q)){const x=q[key];if(x&&x.devid){const ok=await ownerTuyaCommand(x,false);if(ok){delete q[key];}}}
+  try{localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}
+}
+window.addEventListener('online',ownerRetryPendingOff);setInterval(ownerRetryPendingOff,7000);
+
+function renderOwnerPayments(containerId,selectedVar){
+  const el=document.getElementById(containerId);if(!el)return;
+  const selected=selectedVar==='start'?ownerSelPay:ownerPlusPay;
+  el.innerHTML=OWNER_PAYS.map(p=>`<div class="pctl-opt ${p.id===selected?'sel':''}" onclick="ownerChoosePay('${containerId}','${selectedVar}','${p.id}',this)">${p.emoji} ${p.lbl}</div>`).join('');
+}
+function ownerChoosePay(containerId,kind,id,el){document.querySelectorAll('#'+containerId+' .pctl-opt').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');if(kind==='start')ownerSelPay=id;else ownerPlusPay=id;}
+function renderOwnerDurations(containerId,post,kind){
+  const el=document.getElementById(containerId);if(!el)return;const arr=ownerTarifs(post);const selected=kind==='start'?ownerSelMin:ownerPlusMin;
+  el.innerHTML=arr.length?arr.map(t=>`<div class="dctl-opt ${Number(t.min)===Number(selected)?'sel':''}" onclick="ownerChooseDuration('${containerId}','${kind}',${Number(t.min)},this)"><div class="dctl-min">${esc(t.lbl||((t.min||0)+' min'))}</div><div class="dctl-price">${money(t.prix).toLocaleString('fr-FR')} F</div></div>`).join(''):'<div style="grid-column:1/-1;font-size:12px;color:var(--muted)">Aucun tarif configuré pour '+esc(post.type)+'</div>';
+}
+function ownerChooseDuration(containerId,kind,min,el){document.querySelectorAll('#'+containerId+' .dctl-opt').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');if(kind==='start')ownerSelMin=min;else ownerPlusMin=min;}
+
+function renderControl(){
+  const box=document.getElementById('control-postes');if(!box)return;const postes=DB.get('postes')||[];let actifs=0;
+  if(!postes.length){box.innerHTML='<div class="info-box" style="grid-column:1/-1">Aucun poste configuré.</div>';ownerRenderDashboard();ownerRenderJournal();return;}
+  box.innerHTML=postes.map((p,i)=>{
+    const a=activeForPoste(p,i)||{};if(a.actif)actifs++;
+    const rest=remainingActive(a),timer=a.actif?fmtRest(rest):'—:——',amount=money(a.montantSession),cls=a.paused?'paused':(a.actif?'active':'');
+    const badge=a.paused?'PAUSE':(a.actif?'EN JEU':'LIBRE');
+    const total=Math.max(0,Number(a.tempsTotal)||0);const pct=a.actif&&total>0?Math.max(0,Math.min(100,(rest/total)*100)):0;
+    // OFF TV est volontairement réservé à l'interface Patron.
+    // Il termine la session à 00:00 SANS retirer le montant déjà encaissé.
+    const activeButtons=a.paused
+      ? `<button class="ctl-btn ctl-resume" onclick="ownerResume(${i})">▶ REPRENDRE</button><button class="ctl-btn ctl-plus" onclick="ownerOpenPlus(${i})">＋TPS</button><button class="ctl-btn ctl-cancel" onclick="ownerOpenCancel(${i})">ANNULER</button><button class="ctl-btn ctl-off" onclick="ownerPowerOff(${i})">⏻ OFF TV</button>`
+      : `<button class="ctl-btn ctl-pause" onclick="ownerPause(${i})">⏸ PAUSE</button><button class="ctl-btn ctl-plus" onclick="ownerOpenPlus(${i})">＋TPS</button><button class="ctl-btn ctl-cancel" onclick="ownerOpenCancel(${i})">ANNULER</button><button class="ctl-btn ctl-off" onclick="ownerPowerOff(${i})">⏻ OFF TV</button>`;
+    return `<div class="ctl-card ${cls}">
+      <div class="ctl-head"><div><div class="ctl-num">${esc(p.num)}</div><div class="ctl-type">${esc(p.type)}</div></div><span class="badge ${a.actif?'b-on':'b-off'}">${badge}</span></div>
+      <div class="ctl-timer-row"><div class="ctl-timer ${a.paused?'pause':(a.actif?'on':'free')}">${timer}</div>${a.actif?`<div class="ctl-money">${amount.toLocaleString('fr-FR')} F</div>`:''}</div>
+      <div class="ctl-progress"><div class="ctl-progress-bar" style="width:${pct}%"></div></div>
+      <div class="ctl-client">${a.actif?esc(a.client||'Client'):'Disponible'}</div>
+      <div style="font-size:10px;color:var(--muted);margin:3px 0 8px">${p.devid?'🔌 Prise liée':'⚠️ Sans prise'}</div>
+      <div class="ctl-actions">${!a.actif?`<button class="ctl-btn ctl-start" style="background:#7c3aed;border-color:#8b5cf6;color:#fff" onclick="ownerOpenStart(${i})">DÉMARRER</button>`:activeButtons}</div>
+    </div>`;
+  }).join('');
+  const c=document.getElementById('ctl-active-count');if(c)c.textContent=actifs+' actif'+(actifs>1?'s':'');
+  ownerRenderDashboard();ownerRenderJournal();
+}
+
+function ownerCurrentSessionSnapshot(){
+  const ss=DB.get('sessions')||{};
+  if(ss.date!==today())return {recettes:0,count:0,date:today(),parPoste:{},sessionsParPoste:{},payStats:{}};
+  return {recettes:money(ss.recettes),count:Math.max(0,Number(ss.count)||0),date:today(),parPoste:Object.assign({},ss.parPoste||{}),sessionsParPoste:Object.assign({},ss.sessionsParPoste||{}),payStats:Object.assign({},ss.payStats||{})};
+}
+function ownerPreviousDateKey(){const d=businessDate(new Date());d.setDate(d.getDate()-1);return dateKeyISO(d);}
+function ownerRevenueStats(){
+  const daily=DB.get('daily')||{},current=ownerCurrentSessionSnapshot(),todayKey=businessDateKey(new Date()),yKey=ownerPreviousDateKey(),monthPrefix=todayKey.slice(0,7);const wd=businessDate(new Date());wd.setDate(wd.getDate()-6);const weekKey=dateKeyISO(wd);
+  let yesterday=0,week=0,month=0,total=0;const perPoste={day:{},week:{},month:{},total:{}};
+  Object.entries(daily).forEach(([k,snap])=>{if(k===todayKey||!snap)return;const r=money(snap.recettes);total+=r;if(k===yKey)yesterday+=r;if(k>=weekKey)week+=r;if(k.startsWith(monthPrefix))month+=r;Object.entries(snap.parPoste||{}).forEach(([n,v])=>{const a=money(v);perPoste.total[n]=(perPoste.total[n]||0)+a;if(k>=weekKey)perPoste.week[n]=(perPoste.week[n]||0)+a;if(k.startsWith(monthPrefix))perPoste.month[n]=(perPoste.month[n]||0)+a;});});
+  const day=money(current.recettes);total+=day;week+=day;month+=day;Object.entries(current.parPoste||{}).forEach(([n,v])=>{const a=money(v);perPoste.day[n]=a;perPoste.week[n]=(perPoste.week[n]||0)+a;perPoste.month[n]=(perPoste.month[n]||0)+a;perPoste.total[n]=(perPoste.total[n]||0)+a;});
+  return {day,yesterday,week,month,total,perPoste};
+}
+function ownerRenderDashboard(){
+  const postes=DB.get('postes')||[],ss=ownerCurrentSessionSnapshot(),active=postes.map((p,i)=>({p,a:activeForPoste(p,i)||{}})).filter(x=>x.a.actif),on=active.filter(x=>!x.a.paused&&x.p.devid),rev=ownerRevenueStats();
+  const byId=id=>document.getElementById(id);if(byId('od-act'))byId('od-act').textContent=active.length;if(byId('od-rec'))byId('od-rec').textContent=money(ss.recettes).toLocaleString('fr-FR');if(byId('od-prises'))byId('od-prises').textContent=on.length;
+  if(byId('od-act-list'))byId('od-act-list').textContent=active.length?'Postes actifs : '+active.map(x=>x.p.num).join(', '):'Aucun poste actif';if(byId('od-prises-list'))byId('od-prises-list').textContent=on.length?'Télévisions allumées : '+on.map(x=>x.p.num).join(', '):'Aucune télévision allumée';
+  if(byId('od-yesterday'))byId('od-yesterday').textContent=rev.yesterday.toLocaleString('fr-FR')+' F';if(byId('od-month'))byId('od-month').textContent=rev.month.toLocaleString('fr-FR')+' F';
+  const usage=byId('od-usage');if(usage){usage.innerHTML=postes.length?postes.map((p,i)=>{const a=activeForPoste(p,i)||{},n=Math.max(0,Math.floor(Number((ss.sessionsParPoste||{})[p.num])||0)),amt=a.actif?money(a.montantSession):0;return `<div class="owner-usage-row"><span class="owner-usage-name">${esc(p.num)}</span><span class="owner-usage-val">${n} fois · ${amt.toLocaleString('fr-FR')} F</span></div>`;}).join(''):'<div class="owner-stat-sub">Aucun poste</div>';}
+}
+function ownerDayActivities(dayKey){const all=DB.get('activity_daily')||{},m=all[dayKey]||{};const arr=Array.isArray(m)?m:Object.values(m||{});return arr.filter(Boolean).sort((a,b)=>(Number(b.ts)||0)-(Number(a.ts)||0));}
+function ownerRenderJournal(){
+  const list=document.getElementById('owner-journal-list');if(!list)return;const postes=DB.get('postes')||[];const active=postes.map((p,i)=>({p,a:activeForPoste(p,i)||{}})).filter(x=>x.a.actif);const events=ownerDayActivities(businessDateKey(new Date()));
+  if(!active.length&&!events.length){list.innerHTML='<div class="owner-je"><div class="owner-jdetail">Aucune activité pour cette journée.</div></div>';return;}
+  const ah=active.map(x=>{const a=x.a,p=x.p,rest=remainingActive(a),debut=a.startedAt?ownerFmtClock(a.startedAt):'—',fin=a.paused?'EN PAUSE':(a.finTs?ownerFmtClock(a.finTs):'—');return `<div class="owner-je ${a.paused?'owner-jpause':'owner-jactive'}"><span class="owner-jtime">${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span><span class="owner-jdot ${a.paused?'y':'g'}"></span><div class="owner-jbody"><div class="owner-jmain">${esc(p.num)} — ${a.paused?'PAUSE':'ACTIF'}</div><div class="owner-jdetail">${esc(a.client||'—')} · Début ${debut} · Fin prévue ${fin} · Temps activé ${fmtRest(Number(a.tempsTotal)||0)}</div><div class="owner-jlive">Temps restant : ${fmtRest(rest)}</div></div><span class="owner-jamount">${money(a.montantSession).toLocaleString('fr-FR')} F</span></div>`;}).join('');
+  const eh=events.slice(0,80).map(e=>`<div class="owner-je"><span class="owner-jtime">${esc(e.t||ownerFmtClock(e.ts).slice(0,5))}</span><span class="owner-jdot ${esc(e.color||'p')}"></span><div class="owner-jbody"><div class="owner-jmain">${esc(e.main||'Activité')}</div>${e.detail?`<div class="owner-jdetail">${esc(e.detail)}</div>`:''}${e.motif?`<div class="owner-jmotif">Motif : ${esc(e.motif)}</div>`:''}</div>${e.amount?`<span class="owner-jamount">${esc(e.amount)}</span>`:''}</div>`).join('');list.innerHTML=ah+eh;
+}
+async function ownerPauseAllForPowerOutage(){
+  const postes=DB.get('postes')||[],ops=[];postes.forEach((p,i)=>{const a=activeForPoste(p,i)||{};if(a.actif&&!a.paused)ops.push({p,i,a,rest:remainingActive(a)});});if(!ops.length)return showToast('ℹ️ Aucun poste actif à mettre en pause');
+  try{const res=await fbRoot.transaction(root=>{root=root||{};ops.forEach(op=>{const r=rootReadActive(root,Object.assign({},op.p,op.a),op.i)||{};if(r.actif&&!r.paused&&(!op.a.sessionId||!r.sessionId||r.sessionId===op.a.sessionId))rootWriteActive(root,Object.assign({},op.p,op.a),op.i,Object.assign({},r,{paused:true,pauseRemainingSec:op.rest,finTs:0,updatedAt:Date.now()}));});return root;},undefined,false);if(res.snapshot&&typeof res.snapshot.val==='function')DB._cache=res.snapshot.val()||DB._cache;for(const op of ops){ownerPersistActivity(op.p.num+' — Pause coupure de courant',(op.a.client||'Client')+' · '+fmtRest(op.rest)+' restantes','',{poste:op.p.num,sessionId:op.a.sessionId||'',typeActivite:'pause_coupure'});if(op.p.devid)await ownerReliableOff(op.p);}renderControl();showToast('⚡ '+ops.length+' poste(s) mis en pause');}catch(e){console.log(e);showToast('⚠️ Impossible de mettre tous les postes en pause');}
+}
+function ownerFormatDay(key){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key||''));if(!m)return key;return new Date(Number(m[1]),Number(m[2])-1,Number(m[3])).toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});}
+function ownerFormatMonth(key){const m=/^(\d{4})-(\d{2})$/.exec(String(key||''));if(!m)return key;return new Date(Number(m[1]),Number(m[2])-1,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});}
+function ownerUsageCount(snap){return Object.values((snap&&snap.sessionsParPoste)||{}).reduce((a,v)=>a+Math.max(0,Math.floor(Number(v)||0)),0);}
+function ownerPosteDetail(snap){const counts=(snap&&snap.sessionsParPoste)||{},amounts=(snap&&snap.parPoste)||{},names=new Set([...Object.keys(counts),...Object.keys(amounts)]);return Array.from(names).sort((a,b)=>String(a).localeCompare(String(b),'fr',{numeric:true})).map(n=>`${n} : ${Math.max(0,Math.floor(Number(counts[n])||0))} fois · ${money(amounts[n]).toLocaleString('fr-FR')} F`);}
+function ownerHistorySnapshots(){const d=Object.assign({},DB.get('daily')||{});d[businessDateKey(new Date())]=ownerCurrentSessionSnapshot();return d;}
+function ownerRenderHistory(){
+  const daysEl=document.getElementById('oh-days'),monthsEl=document.getElementById('oh-months');if(!daysEl||!monthsEl)return;const daily=ownerHistorySnapshots(),days=Object.entries(daily).filter(([k,v])=>/^\d{4}-\d{2}-\d{2}$/.test(k)&&v&&typeof v==='object').sort((a,b)=>b[0].localeCompare(a[0]));
+  daysEl.innerHTML=days.length?days.map(([k,snap])=>{const acts=ownerDayActivities(k),det=ownerPosteDetail(snap);return `<div class="owner-hist-card"><div class="owner-hist-head"><span class="owner-hist-title">📅 ${ownerFormatDay(k)}</span><span class="owner-hist-amount">${money(snap.recettes).toLocaleString('fr-FR')} F</span></div><div class="owner-hist-meta">🎮 ${ownerUsageCount(snap)} utilisation(s) · ${acts.length} activité(s)</div><div class="owner-hist-postes">${det.length?det.join(' · '):'Aucune utilisation'}</div>${acts.length?`<div class="owner-hist-activities">${acts.map(a=>`<div class="owner-hist-act"><span class="tm">${esc(a.t||ownerFmtClock(a.ts).slice(0,5))}</span> · <b>${esc(a.main||'Activité')}</b>${a.detail?' · '+esc(a.detail):''}${a.motif?' · Motif : '+esc(a.motif):''}${a.amount?' · '+esc(a.amount):''}</div>`).join('')}</div>`:''}</div>`;}).join(''):'<div class="owner-hist-zero">Aucun historique journalier</div>';
+  const months={};days.forEach(([k,s])=>{const mk=k.slice(0,7),m=months[mk]||(months[mk]={recettes:0,uses:0,jours:0,sessionsParPoste:{},parPoste:{}});m.jours++;m.recettes+=money(s.recettes);m.uses+=ownerUsageCount(s);Object.entries(s.sessionsParPoste||{}).forEach(([n,v])=>m.sessionsParPoste[n]=(m.sessionsParPoste[n]||0)+Math.max(0,Math.floor(Number(v)||0)));Object.entries(s.parPoste||{}).forEach(([n,v])=>m.parPoste[n]=(m.parPoste[n]||0)+money(v));});
+  const rows=Object.entries(months).sort((a,b)=>b[0].localeCompare(a[0]));monthsEl.innerHTML=rows.length?rows.map(([k,m])=>`<div class="owner-hist-card"><div class="owner-hist-head"><span class="owner-hist-title">🗓️ ${ownerFormatMonth(k)}</span><span class="owner-hist-amount">${money(m.recettes).toLocaleString('fr-FR')} F</span></div><div class="owner-hist-meta">🎮 ${m.uses} utilisation(s) · ${m.jours} jour(s)</div><div class="owner-hist-postes">${ownerPosteDetail(m).join(' · ')||'Aucune utilisation'}</div></div>`).join(''):'<div class="owner-hist-zero">Aucun historique mensuel</div>';
+}
+function ownerRenderReport(){
+  const postes=DB.get('postes')||[],ss=ownerCurrentSessionSnapshot(),rev=ownerRevenueStats(),active=postes.map((p,i)=>({p,a:activeForPoste(p,i)||{}})).filter(x=>x.a.actif),plugs=active.filter(x=>!x.a.paused&&x.p.devid),byId=id=>document.getElementById(id);const bd=businessDate(new Date());
+  if(byId('or-date'))byId('or-date').textContent=bd.toLocaleDateString('fr-FR',{day:'numeric',month:'long'});if(byId('or-rec'))byId('or-rec').textContent=money(ss.recettes).toLocaleString('fr-FR')+' FCFA';if(byId('or-active'))byId('or-active').textContent=active.length;if(byId('or-done'))byId('or-done').textContent=Math.max(0,Number(ss.count)||0);if(byId('or-plugs'))byId('or-plugs').textContent=plugs.length;
+  [['or-day',rev.day],['or-yesterday',rev.yesterday],['or-week',rev.week],['or-month',rev.month],['or-total',rev.total]].forEach(([id,v])=>{if(byId(id))byId(id).textContent=money(v).toLocaleString('fr-FR')+' FCFA';});
+  const pay=byId('or-payments');if(pay){const ent=Object.entries(ss.payStats||{});pay.innerHTML=ent.length?ent.map(([id,v])=>{const p=OWNER_PAYS.find(x=>x.id===id);return `<div class="owner-rrow"><span class="owner-rkey">${p?p.emoji+' '+p.lbl:id}</span><span class="owner-rval purple">${money(v).toLocaleString('fr-FR')} FCFA</span></div>`;}).join(''):'<div class="owner-rrow"><span class="owner-rkey">Aucune donnée</span></div>';}
+  const pp=byId('or-postes');if(pp)pp.innerHTML=postes.length?postes.map(p=>`<div class="owner-rrow" style="display:block"><div style="font-weight:700;margin-bottom:4px">${esc(p.num)} — ${esc(p.type)}</div><div style="font-size:10px;color:#7f8498">Jour : ${money(rev.perPoste.day[p.num]).toLocaleString('fr-FR')} F · Semaine : ${money(rev.perPoste.week[p.num]).toLocaleString('fr-FR')} F · Mois : ${money(rev.perPoste.month[p.num]).toLocaleString('fr-FR')} F · Total : ${money(rev.perPoste.total[p.num]).toLocaleString('fr-FR')} F</div></div>`).join(''):'<div class="owner-rrow"><span class="owner-rkey">Aucun poste</span></div>';
+  const cancels=(DB.get('annulations')||[]).filter(a=>a&&a.dateKey===businessDateKey(new Date())).sort((a,b)=>(Number(b.ts)||0)-(Number(a.ts)||0));if(byId('or-cancel-count'))byId('or-cancel-count').textContent=cancels.length+' annulation'+(cancels.length>1?'s':'');const cl=byId('or-cancels');if(cl)cl.innerHTML=cancels.length?cancels.map(a=>`<div class="owner-cancel-card"><div class="owner-cancel-head"><span class="owner-cancel-post">↩ ${esc(a.poste||'Poste')}</span><span class="owner-cancel-money">-${money(a.montantRetireJour!=null?a.montantRetireJour:a.montant).toLocaleString('fr-FR')} F</span></div><div class="owner-cancel-meta">${esc(a.client||'—')} · Annulé à ${esc(a.heure||ownerFmtClock(a.ts))} · Temps restant ${fmtRest(a.tempsRestantSec||0)}</div><div class="owner-cancel-reason">Motif : ${esc(a.raison||'Non indiqué')}</div><div class="owner-cancel-meta">Par : ${esc(a.gerant||'—')}</div></div>`).join(''):'<div class="owner-rrow"><span class="owner-rkey">Aucune annulation aujourd\'hui</span></div>';
+}
+async function ownerEnsureDailyRollover(){
+  const key=businessDateKey(new Date());if(!ownerRuntimeDayKey){ownerRuntimeDayKey=key;return;}if(key===ownerRuntimeDayKey||ownerRolloverBusy||!fbRoot)return;const prevKey=ownerRuntimeDayKey;ownerRuntimeDayKey=key;ownerRolloverBusy=true;
+  try{const res=await fbRoot.transaction(root=>{root=root||{};root.rollovers=root.rollovers||{};if(root.rollovers[key])return root;root.daily=root.daily||{};const prev=root.sessions||{};if(!root.daily[prevKey]||money(prev.recettes)>=money(root.daily[prevKey]&&root.daily[prevKey].recettes))root.daily[prevKey]=deepClone(prev);const zero={recettes:0,count:0,date:today(),parPoste:{},sessionsParPoste:{},payStats:{}};root.sessions=zero;root.daily[key]=deepClone(zero);const arr=Array.isArray(root.active_postes)?root.active_postes.slice():[];arr.forEach((a,i)=>{if(a&&a.actif)arr[i]=Object.assign({},a,{montantJourSession:0,updatedAt:Date.now()});});root.active_postes=arr;if(root.active_by_poste&&typeof root.active_by_poste==='object'){const map=Object.assign({},root.active_by_poste);Object.keys(map).forEach(k=>{const a=map[k];if(a&&a.actif)map[k]=Object.assign({},a,{montantJourSession:0,updatedAt:Date.now()});});root.active_by_poste=map;}root.rollovers[key]={ts:Date.now(),previousKey:prevKey};return root;},undefined,false);if(res.snapshot&&typeof res.snapshot.val==='function')DB._cache=res.snapshot.val()||DB._cache;showToast('🌅 07h00 — nouvelle journée de gestion');}catch(e){console.log('Rollover patron',e);}finally{ownerRolloverBusy=false;}
+}
+
+
+function ownerOpenStart(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(a&&a.actif){showToast('⚠️ Poste déjà actif');return;}ownerPosteIdx=i;const ts=ownerTarifs(p);ownerSelMin=ts.length?Number(ts[0].min)||0:0;ownerSelPay='especes';document.getElementById('owner-start-title').textContent=p.num+' — Nouvelle session';document.getElementById('owner-client').value='';renderOwnerDurations('owner-start-durations',p,'start');renderOwnerPayments('owner-start-payments','start');openModal('mo-owner-start');}
+function ownerOpenPlus(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(!a||!a.actif){showToast('⚠️ Poste non actif');return;}ownerPosteIdx=i;const ts=ownerTarifs(p);ownerPlusMin=ts.length?Number(ts[0].min)||0:0;ownerPlusPay='especes';document.getElementById('owner-plus-title').textContent=p.num+' — Ajouter du temps';renderOwnerDurations('owner-plus-durations',p,'plus');renderOwnerPayments('owner-plus-payments','plus');openModal('mo-owner-plus');}
+
+
+function ownerOpenCancel(i){
+  const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i)||{};
+  if(!a.actif){showToast('⚠️ Poste non actif');return;}
+  ownerCancelIdx=i;
+  document.getElementById('owner-cancel-title').textContent=p.num+' — Annuler la session';
+  document.getElementById('owner-cancel-client').textContent='Client : '+(a.client||'Client');
+  document.getElementById('owner-cancel-time').textContent='Temps restant : '+fmtRest(remainingActive(a));
+  document.getElementById('owner-cancel-amount').textContent='Montant à retirer : '+money(a.montantSession).toLocaleString('fr-FR')+' F';
+  const input=document.getElementById('owner-cancel-reason');input.value='';ownerUpdateCancelButton();openModal('mo-owner-cancel');setTimeout(()=>input.focus(),180);
+}
+function ownerUpdateCancelButton(){
+  const input=document.getElementById('owner-cancel-reason'),btn=document.getElementById('owner-cancel-confirm'),help=document.getElementById('owner-cancel-help');if(!input||!btn)return;
+  const ok=input.value.trim().length>0;btn.disabled=!ok;
+  if(help){help.textContent=ok?'✅ Motif saisi — vous pouvez annuler.':'⚠️ Écrivez le motif pour pouvoir annuler.';help.style.color=ok?'#22c55e':'#facc15';}
+}
+async function ownerConfirmCancel(){
+  const postes=DB.get('postes')||[];const p=postes[ownerCancelIdx];if(!p)return;
+  const local=activeForPoste(p,ownerCancelIdx)||{};if(!local.actif){closeModal('mo-owner-cancel');showToast('ℹ️ Session déjà terminée');return;}
+  const reason=document.getElementById('owner-cancel-reason').value.trim();if(!reason){showToast('⚠️ Motif obligatoire');ownerUpdateCancelButton();return;}
+  const sid=local.sessionId||(`${p.num}-${local.startedAt||Date.now()}`),lock='cancel-'+sid;if(ownerCancelLocks.has(lock))return;ownerCancelLocks.add(lock);
+  const now=Date.now(),dayKey=businessDateKey(new Date(now)),startedKey=local.startedAt?businessDateKey(new Date(Number(local.startedAt))):dayKey;
+  const totalAmount=money(local.montantSession),todayAmount=startedKey===dayKey?totalAmount:Math.min(totalAmount,money(local.montantJourSession));
+  const rest=remainingActive(local),totalSec=Math.max(0,Number(local.tempsTotal)||0),used=Math.max(0,totalSec-rest),detail=Object.assign({},local.paiementsSession||{});
+  try{
+    const res=await fbRoot.transaction(root=>{
+      root=root||{};root.refunded_sessions=root.refunded_sessions||{};root.closed_sessions=root.closed_sessions||{};
+      if(sid&&root.refunded_sessions[sid])return root;
+      const remote=rootReadActive(root,Object.assign({},p,local),ownerCancelIdx)||{};
+      if(!remote.actif||(sid&&remote.sessionId&&remote.sessionId!==sid))return;
+      const refund=Math.max(0,todayAmount);
+      const ss=freshSessionSnapshotFromRoot(root);ss.recettes=Math.max(0,money(ss.recettes)-refund);ss.parPoste=ownerSubtractPosteBreakdown(ss.parPoste||{},p.num,refund);ss.payStats=ownerSubtractPaymentBreakdown(ss.payStats||{},detail,refund);
+      if(startedKey===dayKey){ss.sessionsParPoste=Object.assign({},ss.sessionsParPoste||{});ss.sessionsParPoste[p.num]=Math.max(0,Math.floor(Number(ss.sessionsParPoste[p.num])||0)-1);if(ss.sessionsParPoste[p.num]===0)delete ss.sessionsParPoste[p.num];}
+      root.sessions=ss;root.daily=root.daily||{};root.daily[dayKey]=deepClone(ss);
+      rootWriteActive(root,Object.assign({},p,local),ownerCancelIdx,blankRemoteActive(remote));
+      const ann={id:sid,dateKey:dayKey,ts:now,heure:ownerFmtClock(now),poste:p.num,type:p.type||'',client:local.client||'',montant:totalAmount,montantRetireJour:refund,tempsJoueSec:used,tempsRestantSec:rest,raison:reason,gerant:'Patron'};
+      let arr=Array.isArray(root.annulations)?root.annulations.slice():[];if(!arr.some(x=>x&&x.id===sid))arr.unshift(ann);root.annulations=arr.slice(0,200);
+      root.closed_sessions[sid]={status:'annulee',ts:now,dateKey:dayKey,poste:p.num};root.refunded_sessions[sid]={ts:now,dateKey:dayKey,poste:p.num,montant:refund};return root;
+    },undefined,false);
+    if(!res.committed){showToast('⚠️ Le poste a changé sur un autre appareil');return;}
+    if(res.snapshot&&typeof res.snapshot.val==='function')DB._cache=res.snapshot.val()||DB._cache;
+    closeModal('mo-owner-cancel');
+    ownerPersistActivity(p.num+' — Vente annulée par le patron',`${local.client||'Client'} · Début ${ownerFmtClock(local.startedAt)} · Annulé ${ownerFmtClock(now)} · utilisé ${fmtRest(used)} · restant ${fmtRest(rest)} · Motif: ${reason}`,'-'+todayAmount.toLocaleString('fr-FR')+' F',{poste:p.num,client:local.client||'',sessionId:sid,typeActivite:'annulee',tempsUtiliseSec:used,tempsRestantSec:rest,montant:-todayAmount,raison:reason});
+    if(p.devid)await ownerReliableOff(p);
+    renderControl();renderHome();showToast(`↩ ${p.num} annulé · ${todayAmount.toLocaleString('fr-FR')} F retirés`);
+  }catch(e){console.log('Annulation patron:',e);showToast('⚠️ Annulation impossible — vérifiez Internet');}
+  finally{setTimeout(()=>ownerCancelLocks.delete(lock),800);}
+}
+
+async function ownerConfirmStart(){
+  const postes=DB.get('postes')||[];const p=postes[ownerPosteIdx];if(!p)return;const nom=document.getElementById('owner-client').value.trim();if(!nom){showToast('⚠️ Entrez le nom du client');return;}const tarif=ownerTarifs(p).find(t=>Number(t.min)===Number(ownerSelMin));if(!tarif){showToast('⚠️ Choisissez une durée');return;}const prix=money(tarif.prix),min=Number(tarif.min)||0;if(!prix||!min)return showToast('⚠️ Tarif invalide');const now=Date.now(),sid=String(p.num)+'-'+now+'-pat';const state={actif:true,client:nom,finTs:now+min*60000,tempsTotal:min*60,dureeMin:min,paused:false,pauseRemainingSec:0,montantSession:prix,montantJourSession:prix,paiementsSession:{},sessionId:sid,startedAt:now,updatedAt:now};state.paiementsSession[ownerSelPay]=prix;
+  try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,p,ownerPosteIdx)||{};if(remote.actif)return;rootWriteActive(root,p,ownerPosteIdx,state);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.sessionsParPoste[p.num]=Math.max(0,Number(ss.sessionsParPoste[p.num])||0)+1;ss.payStats[ownerSelPay]=money(ss.payStats[ownerSelPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Ce poste vient d’être activé ailleurs');return;}closeModal('mo-owner-start');ownerPersistActivity(p.num+' — Session démarrée par le patron',nom+' · '+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'demarrage',montant:prix});if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'✅ '+p.num+' activé et TV allumée':'⚡ '+p.num+' activé · TV à allumer manuellement');}else showToast('✅ '+p.num+' activé');renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Activation impossible — vérifiez Internet');}
+}
+
+async function ownerConfirmPlus(){
+  const postes=DB.get('postes')||[];const p=postes[ownerPosteIdx];if(!p)return;const current=activeForPoste(p,ownerPosteIdx)||{};if(!current.actif){showToast('⚠️ Session introuvable');return;}const tarif=ownerTarifs(p).find(t=>Number(t.min)===Number(ownerPlusMin));if(!tarif){showToast('⚠️ Choisissez une durée');return;}const prix=money(tarif.prix),min=Number(tarif.min)||0;const sid=current.sessionId||'';
+  try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,Object.assign({},p,current),ownerPosteIdx)||{};if(!remote.actif||(sid&&remote.sessionId&&remote.sessionId!==sid))return;const u=Object.assign({},remote);if(u.paused)u.pauseRemainingSec=(Number(u.pauseRemainingSec)||0)+min*60;else u.finTs=(Number(u.finTs)||Date.now())+min*60000;u.tempsTotal=(Number(u.tempsTotal)||0)+min*60;u.montantSession=money(u.montantSession)+prix;u.montantJourSession=money(u.montantJourSession)+prix;u.paiementsSession=Object.assign({},u.paiementsSession||{});u.paiementsSession[ownerPlusPay]=money(u.paiementsSession[ownerPlusPay])+prix;u.updatedAt=Date.now();rootWriteActive(root,Object.assign({},p,current),ownerPosteIdx,u);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.payStats[ownerPlusPay]=money(ss.payStats[ownerPlusPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Le poste a changé sur un autre appareil');return;}closeModal('mo-owner-plus');ownerPersistActivity(p.num+' — Prolongé par le patron',(current.client||'Client')+' · +'+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:current.client||'',sessionId:sid,typeActivite:'prolongation',dureeAjouteeSec:min*60,montant:prix});showToast('✅ +'+min+' min sur '+p.num);renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Ajout de temps impossible — vérifiez Internet');}
+}
+
+async function ownerPause(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(!a.actif||a.paused)return;const rest=remainingActive(a),sid=a.sessionId||'';try{const res=await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||(sid&&r.sessionId&&r.sessionId!==sid))return;rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},r,{paused:true,pauseRemainingSec:rest,finTs:0,updatedAt:Date.now()}));return root;},undefined,false);if(!res.committed)return showToast('⚠️ Poste modifié ailleurs');ownerPersistActivity(p.num+' — Pause par le patron',(a.client||'Client')+' · '+fmtRest(rest)+' restantes','',{poste:p.num,sessionId:sid,typeActivite:'pause'});if(p.devid)await ownerReliableOff(p);showToast('⏸ '+p.num+' en pause');}catch(e){showToast('⚠️ Pause impossible');}}
+async function ownerResume(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(!a.actif||!a.paused)return;const sid=a.sessionId||'';try{const res=await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||!r.paused||(sid&&r.sessionId&&r.sessionId!==sid))return;const rest=Math.max(0,Number(r.pauseRemainingSec)||0);if(rest<=0)return;rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},r,{paused:false,pauseRemainingSec:0,finTs:Date.now()+rest*1000,updatedAt:Date.now()}));return root;},undefined,false);if(!res.committed)return showToast('⚠️ Poste modifié ailleurs');ownerPersistActivity(p.num+' — Reprise par le patron',(a.client||'Client'),'',{poste:p.num,sessionId:sid,typeActivite:'reprise'});if(p.devid)await ownerTuyaCommand(p,true);showToast('▶ '+p.num+' repris');}catch(e){showToast('⚠️ Reprise impossible');}}
+async function ownerPowerOff(i){
+  const postes=DB.get('postes')||[];
+  const p=postes[i];
+  if(!p)return;
+  const a=activeForPoste(p,i)||{};
+  if(!a.actif){showToast('ℹ️ '+p.num+' est déjà libre');return;}
+
+  const montant=money(a.montantSession);
+  const rest=remainingActive(a);
+  const sid=a.sessionId||(`${p.num}-${a.startedAt||Date.now()}`);
+  const msg='Éteindre la TV de '+p.num+' et terminer cette session maintenant ?\n\nLe temps passera à 00:00 et le poste deviendra LIBRE chez le Patron et le Gérant.\n\nLa recette de '+montant.toLocaleString('fr-FR')+' F sera CONSERVÉE.';
+  if(!confirm(msg))return;
+
+  showToast('⏳ '+p.num+' — arrêt et synchronisation...');
+  try{
+    const now=Date.now();
+    const res=await fbRoot.transaction(root=>{
+      root=root||{};
+      root.closed_sessions=root.closed_sessions||{};
+
+      // Empêche un double comptage si un autre appareil a déjà terminé la session.
+      if(sid&&root.closed_sessions[sid])return;
+      const remote=rootReadActive(root,Object.assign({},p,a),i)||{};
+      if(!remote.actif||(sid&&remote.sessionId&&remote.sessionId!==sid))return;
+
+      // IMPORTANT : aucune modification de recettes, parPoste, payStats ou tarif.
+      // On ferme uniquement la session et on force son temps à zéro.
+      rootWriteActive(root,Object.assign({},p,a),i,blankRemoteActive(remote));
+      const ss=freshSessionSnapshotFromRoot(root);
+      ss.count=Math.max(0,Number(ss.count)||0)+1;
+      root.sessions=ss;
+      root.daily=root.daily||{};
+      root.daily[businessDateKey(new Date(now))]=deepClone(ss);
+      if(sid){
+        root.closed_sessions[sid]={
+          status:'terminee_off_patron',ts:now,dateKey:businessDateKey(new Date(now)),
+          poste:p.num,client:a.client||'',montantConserve:montant,
+          tempsRestantAnnuleSec:rest,par:'Patron'
+        };
+      }
+      return root;
+    },undefined,false);
+
+    if(!res.committed){
+      showToast('⚠️ Le poste a déjà été modifié sur un autre appareil');
+      return;
+    }
+    if(res.snapshot&&typeof res.snapshot.val==='function')DB._cache=res.snapshot.val()||DB._cache;
+
+    // L'activité est visible dans Patron ET Gérant via activity_daily.
+    ownerPersistActivity(
+      p.num+' — OFF TV par le patron',
+      (a.client||'Client')+' · Temps restant annulé '+fmtRest(rest)+' · Temps final 00:00 · Recette conservée',
+      montant.toLocaleString('fr-FR')+' F conservés',
+      {poste:p.num,client:a.client||'',sessionId:sid,typeActivite:'off_tv_patron',finTs:now,tempsRestantSec:0,montant:montant,recetteConservee:true}
+    );
+
+    // La commande physique OFF reste exclusive au Patron. Si Internet/Tuya
+    // ne répond pas, elle est mise en file d'attente et réessayée automatiquement.
+    let tvOk=true;
+    if(p.devid)tvOk=await ownerReliableOff(p);
+
+    renderControl();renderHome();ownerRenderReport();ownerRenderHistory();
+    showToast(tvOk
+      ? `🔴 ${p.num} OFF · temps 00:00 · ${montant.toLocaleString('fr-FR')} F conservés`
+      : `⏱ ${p.num} terminé à 00:00 · OFF TV en attente · recette conservée`);
+  }catch(e){
+    console.log('OFF TV patron:',e);
+    showToast('⚠️ OFF TV impossible — vérifiez Internet');
+  }
+}
+
+async function ownerFinishExpired(i,p,a){
+  const sid=a.sessionId||'';const key=sid||('idx-'+i);if(ownerFinishLocks.has(key))return;ownerFinishLocks.add(key);
+  try{if(p.devid)await ownerReliableOff(p);const res=await fbRoot.transaction(root=>{root=root||{};root.closed_sessions=root.closed_sessions||{};if(sid&&root.closed_sessions[sid])return;const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||(sid&&r.sessionId&&r.sessionId!==sid))return;rootWriteActive(root,Object.assign({},p,a),i,blankRemoteActive(r));const ss=freshSessionSnapshotFromRoot(root);ss.count=Math.max(0,Number(ss.count)||0)+1;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);if(sid)root.closed_sessions[sid]={status:'terminee_auto',ts:Date.now(),dateKey:businessDateKey(new Date()),poste:p.num};return root;},undefined,false);if(res.committed)ownerPersistActivity(p.num+' — Temps écoulé',(a.client||'Client')+' · fin automatique',money(a.montantSession).toLocaleString('fr-FR')+' F',{poste:p.num,client:a.client||'',sessionId:sid,typeActivite:'terminee_auto',tempsRestantSec:0,montant:money(a.montantSession)});}catch(e){console.log('Fin patron:',e);}finally{setTimeout(()=>ownerFinishLocks.delete(key),1500);}
+}
+
+setInterval(async()=>{if(!loggedIn||ownerTimerBusy)return;ownerTimerBusy=true;try{await ownerEnsureDailyRollover();const postes=DB.get('postes')||[];for(let i=0;i<postes.length;i++){const p=postes[i],a=activeForPoste(p,i);if(a&&a.actif&&!a.paused&&Number(a.finTs)>0&&Date.now()>=Number(a.finTs))await ownerFinishExpired(i,p,a);}const pg=document.getElementById('page-control');if(pg&&pg.classList.contains('active'))renderControl();const rp=document.getElementById('page-report');if(rp&&rp.classList.contains('active'))ownerRenderReport();const hp=document.getElementById('page-history');if(hp&&hp.classList.contains('active'))ownerRenderHistory();}finally{ownerTimerBusy=false;}},1000);
+
+
+// V5 Patron : OFF TV exclusif Patron + fin 00:00 sans remboursement + synchro Gérant.
+
+// ══════════════════════════════════════
+// CLÉ D'ACTIVATION (liée au nom du commerce)
+// ══════════════════════════════════════
+function checksumKey(name){
+  const n=(name||'').trim().toUpperCase();
+  let h=0;
+  for(let i=0;i<n.length;i++){h=(h*31+n.charCodeAt(i))%100000;}
+  h=(h+73129)%100000;
+  return 'GZ-'+String(h).padStart(5,'0');
+}
+
+function applyBranding(){
+  const cfg=DB.get('config');
+  const name=(cfg&&cfg.businessName)||'GAMEZONE CI';
+  document.title=name+' — Patron';
+  document.getElementById('ll-logo').textContent=name;
+  const initials=name.split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  document.getElementById('tb-logo').textContent='👑 '+(initials||'GZ');
+}
+
+function initApp2(){
+  // S'assure que les listes existent (sans jamais recréer de données de démo)
+  if(!DB.get('postes')) DB.set('postes',[]);
+  if(!DB.get('tarifs')) DB.set('tarifs',[
+    {console:'PS5',min:30,lbl:'30 minutes',prix:500},
+    {console:'PS5',min:60,lbl:'1 heure',prix:900},
+    {console:'PS5',min:90,lbl:'1h30',prix:1300},
+    {console:'PS5',min:120,lbl:'2 heures',prix:1700},
+    {console:'PS5',min:180,lbl:'3 heures',prix:2400},
+  ]);
+  if(!DB.get('gerants')) DB.set('gerants',[]);
+}
+
+function boot(){
+  const cfg=DB.get('config');
+  if(!cfg){
+    document.getElementById('setup-screen').style.display='flex';
+  } else {
+    applyBranding();
+    document.getElementById('login-screen').style.display='flex';
+  }
+}
+
+// SETUP (première mise en service)
+function doSetup(){
+  const name=document.getElementById('su-name').value.trim();
+  const key=document.getElementById('su-key').value.trim().toUpperCase();
+  const id=document.getElementById('su-id').value.trim();
+  const pass=document.getElementById('su-pass').value;
+  const err=document.getElementById('suerr');
+  if(!name||!key||!id||!pass){err.textContent='Remplissez tous les champs.';return;}
+  if(key!==checksumKey(name)){err.textContent='Clé d\'activation invalide pour ce nom de salle.';return;}
+  err.textContent='';
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('fb-loading').style.display='flex';
+  localStorage.setItem('gz_room_key',key);
+  connectTenant(key);
+  DB.onReady(function(){
+    document.getElementById('fb-loading').style.display='none';
+    DB.set('config',{businessName:name,activatedAt:new Date().toISOString()});
+    DB.set('patron',{id,pass});
+    initApp2();
+    applyBranding();
+    document.getElementById('login-screen').style.display='flex';
+    showToast('✅ Configuration terminée, connectez-vous');
+    DB.onChange(refreshFromRemote);
+  });
+}
+
+// AUTH
+function doLogin(){
+  const u=document.getElementById('lu').value.trim();
+  const p=document.getElementById('lp').value;
+  const patron=DB.get('patron');
+  if(patron&&u===patron.id&&p===patron.pass){
+    loggedIn=true;
+    document.getElementById('lerr').textContent='';
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    initApp();
+  } else document.getElementById('lerr').textContent='Identifiants incorrects.';
+}
+function resetRoomKey(){
+  const cfg=DB.get('config');
+  const currentName=(cfg&&cfg.businessName)||'cette salle';
+  if(!confirm('⚠️ Cet appareil est actuellement configuré pour : "'+currentName+'"\n\nRéinitialiser effacera ce lien et permettra de configurer une NOUVELLE salle (nom + clé + identifiant + mot de passe).\n\nÀ utiliser uniquement avant de remettre l\'app à un nouveau client. Continuer ?'))return;
+  localStorage.removeItem('gz_room_key');
+  location.reload();
+}
+function doLogout(){
+  loggedIn=false;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('lp').value='';
+}
+document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+function initApp(){ownerRuntimeDayKey=businessDateKey(new Date());renderControl();ownerRenderReport();ownerRenderHistory();renderPostes();renderTarifs();renderGerants();renderParams();}
+
+// Même logique d'archivage que côté App Gérant : lit l'archive quotidienne
+// (clé "daily/AAAA-MM-JJ", jamais écrasée d'un jour à l'autre) pour calculer
+// les recettes de la semaine (7 derniers jours) et le total depuis toujours,
+// globalement et par poste.
+function dateKeyISO(d){
+  const pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function computeRevenue(){
+  const daily=DB.get('daily')||{};
+  const todayKey=businessDateKey(new Date());
+  const weekStart=businessDate(new Date()); weekStart.setDate(weekStart.getDate()-6);
+  const weekKey=dateKeyISO(weekStart);
+  let day=0, week=0, total=0;
+  const perPoste={day:{},week:{},total:{}};
+  Object.entries(daily).forEach(([dateStr,rec])=>{
+    const rec_rec=rec.recettes||0;
+    total+=rec_rec;
+    if(dateStr>=weekKey) week+=rec_rec;
+    if(dateStr===todayKey) day+=rec_rec;
+    const pp=rec.parPoste||{};
+    Object.entries(pp).forEach(([num,val])=>{
+      perPoste.total[num]=(perPoste.total[num]||0)+val;
+      if(dateStr>=weekKey) perPoste.week[num]=(perPoste.week[num]||0)+val;
+      if(dateStr===todayKey) perPoste.day[num]=(perPoste.day[num]||0)+val;
+    });
+  });
+  return {day,week,total,perPoste};
+}
+
+// HOME
+function renderHome(){
+  const postes=DB.get('postes')||[];
+  const gerants=DB.get('gerants')||[];
+  const active=postes.map((p,i)=>activeForPoste(p,i));
+  const sess=DB.get('sessions')||{recettes:0,count:0};
+  const isToday=sess.date===today();
+  const dailyRec=isToday?(sess.recettes||0):0;
+  const dailyCount=isToday?(sess.count||0):0;
+  const nbAct=active.filter(a=>a&&a.actif).length;
+  const nbPrises=postes.filter((p,i)=>p.devid&&active[i]&&active[i].actif).length;
+  const rev=computeRevenue();
+
+  document.getElementById('k-rec').textContent=dailyRec.toLocaleString('fr-FR');
+  document.getElementById('k-sess').textContent=dailyCount;
+  document.getElementById('k-act').textContent=nbAct;
+  document.getElementById('k-tot').textContent='/'+postes.length;
+  document.getElementById('k-prises').textContent=nbPrises;
+  document.getElementById('k-ger').textContent=gerants.length;
+  document.getElementById('k-rec-week').textContent=rev.week.toLocaleString('fr-FR')+' FCFA';
+  document.getElementById('k-rec-total').textContent=rev.total.toLocaleString('fr-FR')+' FCFA';
+
+  const hpr=document.getElementById('home-postes-rev');
+  hpr.innerHTML=postes.length
+    ? postes.map(p=>{
+        const d=(rev.perPoste.day[p.num]||0).toLocaleString('fr-FR');
+        const w=(rev.perPoste.week[p.num]||0).toLocaleString('fr-FR');
+        const t=(rev.perPoste.total[p.num]||0).toLocaleString('fr-FR');
+        return `<div class="hpr" style="flex-direction:column;align-items:stretch;gap:2px">
+          <div style="font-size:12px;font-weight:600">${p.num} — ${p.type}</div>
+          <div style="font-size:10px;color:var(--muted)">Jour : ${d} F · Semaine : ${w} F · Total : ${t} F</div>
+        </div>`;
+      }).join('')
+    : '<div class="hpr"><span style="font-size:12px;color:var(--muted)">Aucun poste configuré</span></div>';
+
+  const hp=document.getElementById('home-postes');
+  if(!postes.length){hp.innerHTML='<div class="hpr"><span style="font-size:12px;color:var(--muted)">Aucun poste configuré</span></div>';return;}
+  hp.innerHTML=postes.map((p,i)=>{
+    const a=active[i]||{};
+    const restSec=a.actif?Math.max(0,Math.round(((a.finTs||0)-Date.now())/1000)):0;
+    const mm=Math.floor(restSec/60);
+    const ss=restSec%60;
+    const hasPrise=!!p.devid;
+    const recPoste=rev.perPoste.day[p.num]||0;
+    return `<div class="hpr">
+      <div class="prise-dot ${a.actif&&hasPrise?'pd-on':hasPrise?'pd-off':'pd-none'}"></div>
+      <div style="font-family:var(--fd);font-size:16px;font-weight:700;color:var(--gold);min-width:36px">${p.num}</div>
+      <div style="flex:1"><div style="font-size:12px;font-weight:500">${p.type}</div>
+      <div style="font-size:10px;color:var(--muted)">${hasPrise?'🔌 Prise liée':'⚠️ Sans prise'} · ${recPoste.toLocaleString('fr-FR')} FCFA aujourd'hui</div></div>
+      ${a.actif?`<div style="text-align:right"><div style="font-family:var(--fd);font-size:16px;color:var(--green)">${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}</div><div style="font-size:10px;color:var(--muted)">${a.client}</div></div>`
+      :'<span class="badge b-off">LIBRE</span>'}
+    </div>`;
+  }).join('');
+}
+
+// POSTES
+function renderPostes(){
+  const postes=DB.get('postes')||[];
+  document.getElementById('nb-postes').textContent=postes.length+' poste'+(postes.length>1?'s':'');
+  const list=document.getElementById('list-postes');
+  if(!postes.length){list.innerHTML='<div class="crow"><span style="font-size:12px;color:var(--muted)">Aucun poste.</span></div>';return;}
+  list.innerHTML=postes.map((p,i)=>`
+    <div class="crow">
+      <div class="prise-dot ${p.devid?'pd-off':'pd-none'}"></div>
+      <div style="font-family:var(--fd);font-size:17px;font-weight:700;color:var(--gold);min-width:36px">${p.num}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${p.type}</div>
+        <div style="font-size:10px;color:var(--muted)">${p.devid?'🔌 Cloud Tuya lié':'⚠️ Prise non configurée'}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-edit" onclick="editPoste(${i})">✏️</button>
+        <button class="btn-del" onclick="delPoste(${i})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function openModalPoste(idx=-1){
+  document.getElementById('p-edit-idx').value=idx;
+  document.getElementById('test-result').style.display='none';
+  if(idx>=0){
+    const p=(DB.get('postes')||[])[idx];
+    document.getElementById('mo-poste-title').textContent='Modifier le poste';
+    document.getElementById('p-num').value=p.num||'';
+    document.getElementById('p-type').value=p.type||'';
+    document.getElementById('p-ip').value=p.ip||'';
+    document.getElementById('p-devid').value=p.devid||'';
+    document.getElementById('p-key').value=p.key||'';
+    document.getElementById('p-ver').value=p.ver||'3.3';
+  } else {
+    document.getElementById('mo-poste-title').textContent='Nouveau poste';
+    ['p-num','p-type','p-ip','p-devid','p-key'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('p-ver').value='3.3';
+  }
+  openModal('mo-poste');
+  setTimeout(()=>document.getElementById('p-num').focus(),200);
+}
+function editPoste(i){openModalPoste(i);}
+
+function savePoste(){
+  const num=document.getElementById('p-num').value.trim();
+  const type=document.getElementById('p-type').value.trim();
+  if(!num||!type){showToast('⚠️ Nom et type obligatoires');return;}
+  const postes=DB.get('postes')||[];
+  const idx=parseInt(document.getElementById('p-edit-idx').value);
+  const obj={
+    num,type,
+    ip:document.getElementById('p-ip').value.trim(),
+    devid:document.getElementById('p-devid').value.trim(),
+    key:document.getElementById('p-key').value.trim(),
+    ver:document.getElementById('p-ver').value,
+  };
+  if(idx>=0){postes[idx]=obj;showToast('✅ Poste modifié');}
+  else{postes.push(obj);showToast('✅ Poste ajouté');}
+  DB.set('postes',postes);
+  closeModal('mo-poste');renderPostes();renderHome();
+}
+
+function delPoste(i){
+  if(!confirm('Supprimer ce poste ?'))return;
+  const postes=DB.get('postes')||[];postes.splice(i,1);DB.set('postes',postes);
+  renderPostes();renderHome();showToast('Poste supprimé');
+}
+
+// TEST PRISE
+async function testerPrise(){
+  const ip=document.getElementById('p-ip').value.trim();
+  const devid=document.getElementById('p-devid').value.trim();
+  const key=document.getElementById('p-key').value.trim();
+  const res=document.getElementById('test-result');
+  if(!ip||!devid||!key){res.className='test-result tr-err';res.style.display='block';res.textContent='⚠️ Remplissez IP, Device ID et Local Key';return;}
+  res.className='test-result';res.style.display='block';res.textContent='🔄 Test en cours...';
+  try{
+    // Test via proxy CORS local (ne fonctionne qu'en réseau local)
+    const ctrl=new AbortController();
+    setTimeout(()=>ctrl.abort(),3000);
+    await fetch(`http://${ip}:6668`,{signal:ctrl.signal,mode:'no-cors'});
+    res.className='test-result tr-ok';res.textContent='✅ Prise joignable sur le réseau local !';
+  }catch(e){
+    if(e.name==='AbortError'){res.className='test-result tr-err';res.textContent='❌ Prise non joignable. Vérifiez l\'IP et le Wi-Fi.';}
+    else{res.className='test-result tr-ok';res.textContent='✅ Prise détectée (réponse réseau reçue)';}
+  }
+}
+
+// TARIFS
+function renderConsoleTabs(){
+  const tabs=document.getElementById('console-tabs');
+  tabs.innerHTML=CONSOLES.map(c=>`<div class="ctab ${c===activeConsoleTab?'sel':''}" onclick="selConsoleTab('${c}')">${c}</div>`).join('');
+}
+function selConsoleTab(c){
+  activeConsoleTab=c;
+  renderConsoleTabs();
+  renderTarifs();
+}
+function renderTarifs(){
+  renderConsoleTabs();
+  const all=DB.get('tarifs')||[];
+  document.getElementById('nb-tarifs').textContent=all.length+' tarif'+(all.length>1?'s':'');
+  const tarifs=all.filter(t=>(t.console||'PS5')===activeConsoleTab);
+  const list=document.getElementById('list-tarifs');
+  if(!tarifs.length){list.innerHTML=`<div class="trow"><span style="font-size:12px;color:var(--muted)">Aucun tarif pour ${activeConsoleTab}.</span></div>`;return;}
+  list.innerHTML=[...tarifs].sort((a,b)=>a.min-b.min).map(t=>{
+    const i=all.indexOf(t);
+    return `<div class="trow">
+      <div style="flex:1"><div style="font-size:13px">${t.lbl}</div><div style="font-size:10px;color:var(--muted)">${t.min} min</div></div>
+      <div style="font-size:14px;font-weight:700;color:var(--gold);min-width:100px;text-align:right">${t.prix.toLocaleString()} FCFA</div>
+      <button class="btn-edit" onclick="editTarif(${i})">✏️</button>
+      <button class="btn-del" onclick="delTarif(${i})">🗑</button>
+    </div>`;
+  }).join('');
+}
+function openModalTarif(idx=-1){
+  document.getElementById('t-edit-idx').value=idx;
+  if(idx>=0){
+    const t=(DB.get('tarifs')||[])[idx];
+    document.getElementById('mo-tarif-title').textContent='Modifier';
+    document.getElementById('t-console').value=t.console||'PS5';
+    document.getElementById('t-min').value=t.min;
+    document.getElementById('t-lbl').value=t.lbl;
+    document.getElementById('t-prix').value=t.prix;
+  } else {
+    document.getElementById('mo-tarif-title').textContent='Nouveau tarif';
+    document.getElementById('t-console').value=activeConsoleTab;
+    ['t-min','t-lbl','t-prix'].forEach(id=>document.getElementById(id).value='');
+  }
+  openModal('mo-tarif');setTimeout(()=>document.getElementById('t-min').focus(),200);
+}
+function editTarif(i){openModalTarif(i);}
+function saveTarif(){
+  const console_=document.getElementById('t-console').value;
+  const min=parseInt(document.getElementById('t-min').value);
+  const lbl=document.getElementById('t-lbl').value.trim();
+  const prix=parseInt(document.getElementById('t-prix').value);
+  if(!min||!lbl||!prix){showToast('⚠️ Remplissez tous les champs');return;}
+  const tarifs=DB.get('tarifs')||[];
+  const idx=parseInt(document.getElementById('t-edit-idx').value);
+  if(idx>=0){tarifs[idx]={console:console_,min,lbl,prix};showToast('✅ Tarif modifié');}
+  else{tarifs.push({console:console_,min,lbl,prix});showToast('✅ Tarif ajouté');}
+  DB.set('tarifs',tarifs);closeModal('mo-tarif');renderTarifs();
+}
+function delTarif(i){
+  if(!confirm('Supprimer ?'))return;
+  const tarifs=DB.get('tarifs')||[];tarifs.splice(i,1);DB.set('tarifs',tarifs);renderTarifs();showToast('Supprimé');
+}
+
+// GÉRANTS
+function renderGerants(){
+  const gerants=DB.get('gerants')||[];
+  document.getElementById('nb-gerants').textContent=gerants.length+' gérant'+(gerants.length>1?'s':'');
+  const list=document.getElementById('list-gerants');
+  if(!gerants.length){list.innerHTML='<div class="gcrow"><span style="font-size:12px;color:var(--muted)">Aucun gérant.</span></div>';return;}
+  list.innerHTML=gerants.map((g,i)=>`
+    <div class="gcrow">
+      <div class="gava">${g.nom.charAt(0)}${(g.nom.split(' ')[1]||'').charAt(0)}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${g.nom}</div><div style="font-size:10px;color:var(--muted)">@${g.id}</div></div>
+      <button class="btn-edit" onclick="editGerant(${i})">✏️</button>
+      <button class="btn-del" onclick="delGerant(${i})">🗑</button>
+    </div>`).join('');
+}
+function openModalGerant(idx=-1){
+  document.getElementById('g-edit-idx').value=idx;
+  if(idx>=0){const g=(DB.get('gerants')||[])[idx];document.getElementById('mo-gerant-title').textContent='Modifier';document.getElementById('g-nom').value=g.nom;document.getElementById('g-id').value=g.id;document.getElementById('g-pass').value=g.pass;}
+  else{document.getElementById('mo-gerant-title').textContent='Nouveau gérant';['g-nom','g-id','g-pass'].forEach(id=>document.getElementById(id).value='');}
+  openModal('mo-gerant');setTimeout(()=>document.getElementById('g-nom').focus(),200);
+}
+function editGerant(i){openModalGerant(i);}
+function saveGerant(){
+  const nom=document.getElementById('g-nom').value.trim();
+  const id=document.getElementById('g-id').value.trim();
+  const pass=document.getElementById('g-pass').value.trim();
+  if(!nom||!id||!pass){showToast('⚠️ Remplissez tous les champs');return;}
+  const gerants=DB.get('gerants')||[];
+  const idx=parseInt(document.getElementById('g-edit-idx').value);
+  if(idx>=0){gerants[idx]={nom,id,pass};showToast('✅ Gérant modifié');}
+  else{if(gerants.find(g=>g.id===id)){showToast('⚠️ Identifiant déjà utilisé');return;}gerants.push({nom,id,pass});showToast('✅ Gérant ajouté');}
+  DB.set('gerants',gerants);closeModal('mo-gerant');renderGerants();renderHome();
+}
+function delGerant(i){
+  if(!confirm('Supprimer ce gérant ?'))return;
+  const gerants=DB.get('gerants')||[];gerants.splice(i,1);DB.set('gerants',gerants);renderGerants();renderHome();showToast('Supprimé');
+}
+
+// ══════════════════════════════════════
+// PARAMÈTRES — Compte Tuya (identifiants propres au client)
+// ══════════════════════════════════════
+function renderParams(){
+  const cfg=DB.get('tuyaConfig')||{};
+  document.getElementById('pr-tuya-id').value=cfg.clientId||'';
+  document.getElementById('pr-tuya-secret').value=cfg.clientSecret||'';
+  document.getElementById('tuya-config-result').textContent='';
+}
+function saveTuyaConfig(){
+  const clientId=document.getElementById('pr-tuya-id').value.trim();
+  const clientSecret=document.getElementById('pr-tuya-secret').value.trim();
+  if(!clientId||!clientSecret){showToast('⚠️ Renseignez le Client ID et le Client Secret');return;}
+  DB.set('tuyaConfig',{clientId,clientSecret});
+  document.getElementById('tuya-config-result').textContent='✅ Identifiants Tuya enregistrés';
+  showToast('✅ Compte Tuya enregistré');
+}
+
+// NAV
+function showPage(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  const page=document.getElementById('page-'+name);if(!page)return;page.classList.add('active');if(el)el.classList.add('active');document.getElementById('scroll').scrollTop=0;
+  if(name==='control')renderControl();if(name==='report')ownerRenderReport();if(name==='history')ownerRenderHistory();if(name==='postes')renderPostes();if(name==='tarifs')renderTarifs();if(name==='gerants')renderGerants();if(name==='params')renderParams();
+}
+
+// MODAL
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.mo').forEach(el=>{el.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});});
+
+// TOAST
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+// ══════════════════════════════════════
+// SYNCHRO — mise à jour venant de l'autre appareil (App Gérant)
+// ══════════════════════════════════════
+function refreshFromRemote(){
+  if(!loggedIn)return;const activePage=document.querySelector('.page.active');if(!activePage)return;const id=activePage.id;
+  if(id==='page-control')renderControl();else if(id==='page-report')ownerRenderReport();else if(id==='page-history')ownerRenderHistory();else if(id==='page-postes')renderPostes();else if(id==='page-tarifs')renderTarifs();else if(id==='page-gerants')renderGerants();else if(id==='page-params')renderParams();
+}
+
+// CLOCK
+function tickClock(){const n=new Date();document.getElementById('clock').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');}
+tickClock();setInterval(tickClock,10000);
+setInterval(()=>{if(!loggedIn)return;const pg=document.getElementById('page-control');if(pg&&pg.classList.contains('active')){ownerRenderDashboard();ownerRenderJournal();}},5000);
+
+// ══════════════════════════════════════
+// DÉMARRAGE — connexion à la salle (isolation par propriétaire)
+// ══════════════════════════════════════
+const savedTenantKey=localStorage.getItem('gz_room_key');
+currentTenantKey=savedTenantKey||null;
+if(savedTenantKey){
+  connectTenant(savedTenantKey);
+  DB.onReady(function(){
+    document.getElementById('fb-loading').style.display='none';
+    boot();
+    DB.onChange(refreshFromRemote);
+  });
+} else {
+  // Nouvelle installation : pas encore de salle liée à cet appareil
+  document.getElementById('fb-loading').style.display='none';
+  document.getElementById('setup-screen').style.display='flex';
+}
+</script>
+
+<script>
+if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(e=>console.log('Service Worker patron indisponible',e)));
+}
+</script>
+
+</body>
+</html>
