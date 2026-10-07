@@ -1,4 +1,4 @@
-const CACHE='gamezone-patron-v7-secure-20261007';
+const CACHE='gamezone-patron-v8-fix';
 const ASSETS=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));

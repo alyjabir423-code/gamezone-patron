@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="GZ Patron">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.webmanifest">
-<title>GameZone CI — Patron V4</title>
+<title>GameZone CI — Patron V8 sécurisé</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap');
 :root{--bg:#0a0f1e;--surface:#0f1628;--card:#162040;--border:#1e2d52;--gold:#f59e0b;--gl:#fcd34d;--green:#10b981;--red:#ef4444;--blue:#6366f1;--purple:#8b5cf6;--text:#f0f4ff;--muted:#64748b;--sub:#94a3b8;--fd:'Rajdhani',sans-serif;--fb:'Inter',sans-serif;--r:14px;--rs:9px}
@@ -542,6 +542,18 @@ const OWNER_PAYS=[
   {id:'mtn',lbl:'MTN MoMo',emoji:'🟡'},
   {id:'wave',lbl:'Wave',emoji:'🌊'}
 ];
+const CP1_DEVICE_IDS={
+  'poste1':'bfe898207ecd75437dx5fw','poste2':'bfba8b667e37b21c5dxnqz','pote2':'bfba8b667e37b21c5dxnqz',
+  'poste3':'bf3928e0c6b5baa56eobvv','poste4':'bf77859fcb75e26cf11f4o','poste5':'bf7b869fe5f118b73dauab','poste6':'bf4f7b47b4f9ec2451fgex'
+};
+function normalizedPosteName(v){return String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');}
+function ownerResolvedDeviceId(poste){
+  const key=normalizedPosteName(poste&&poste.num);
+  if(String(currentTenantKey||ROOM_KEY||'').toUpperCase()==='GZ-07732'&&CP1_DEVICE_IDS[key])return CP1_DEVICE_IDS[key];
+  return String((poste&&poste.devid)||'').trim();
+}
+const ownerPowerEpoch={};
+function ownerBeginPowerAction(poste){const id=ownerResolvedDeviceId(poste);if(!id)return{id:'',epoch:0};const epoch=(ownerPowerEpoch[id]||0)+1;ownerPowerEpoch[id]=epoch;return{id,epoch};}
 const TUYA_WORKER_URL='https://gamezone-tuya-bah.bahmamadou4234.workers.dev';
 let currentTenantKey=null;
 let ownerPosteIdx=-1, ownerSelMin=0, ownerSelPay='especes', ownerPlusMin=0, ownerPlusPay='especes', ownerCancelIdx=-1;
@@ -559,25 +571,24 @@ function remoteStamp(x){if(!x||typeof x!=='object')return 0;return Math.max(Numb
 function activeForPoste(poste,idx){
   const arr=Array.isArray(DB.get('active_postes'))?DB.get('active_postes'):[];
   const map=(DB.get('active_by_poste')&&typeof DB.get('active_by_poste')==='object')?DB.get('active_by_poste'):{};
-  const legacy=arr[idx]||null, mapped=map[remotePostKey(poste&&poste.num)]||null;
-  if(mapped&&legacy)return remoteStamp(mapped)>=remoteStamp(legacy)?mapped:legacy;
-  return mapped||legacy||{};
+  const mapped=map[remotePostKey(poste&&poste.num)]||null;
+  if(mapped) return mapped;
+  return arr[idx]||{};
 }
 function rootReadActive(root,poste,idx){
   root=root||{};const arr=Array.isArray(root.active_postes)?root.active_postes:[];
   const map=(root.active_by_poste&&typeof root.active_by_poste==='object')?root.active_by_poste:{};
-  const mapped=map[remotePostKey(poste&&poste.num)]||null;let legacy=null;
-  const sid=poste&&poste.sessionId;if(sid)legacy=arr.find(x=>x&&x.sessionId===sid)||null;
+  const mapped=map[remotePostKey(poste&&poste.num)]||null;
+  if(mapped)return mapped;
+  let legacy=null;const sid=poste&&poste.sessionId;if(sid)legacy=arr.find(x=>x&&x.sessionId===sid)||null;
   if(!legacy&&Number.isInteger(idx)&&idx>=0)legacy=arr[idx]||null;
-  if(mapped&&legacy)return remoteStamp(mapped)>=remoteStamp(legacy)?mapped:legacy;
-  return mapped||legacy||{};
+  return legacy||{};
 }
 function rootWriteActive(root,poste,idx,state){
   root=root||{};const arr=Array.isArray(root.active_postes)?root.active_postes.slice():[];
-  const sid=(state&&state.sessionId)||(poste&&poste.sessionId)||'';let ai=-1;
-  if(sid)ai=arr.findIndex(x=>x&&x.sessionId===sid);if(ai<0&&Number.isInteger(idx)&&idx>=0)ai=idx;if(ai<0)ai=arr.length;
   const st=Object.assign({},state||{},{updatedAt:Number((state||{}).updatedAt)||Date.now()});
-  arr[ai]=deepClone(st);root.active_postes=arr;
+  if(Number.isInteger(idx)&&idx>=0)arr[idx]=deepClone(st);
+  root.active_postes=arr;
   root.active_by_poste=(root.active_by_poste&&typeof root.active_by_poste==='object')?Object.assign({},root.active_by_poste):{};
   root.active_by_poste[remotePostKey(poste&&poste.num)]=deepClone(st);return st;
 }
@@ -606,7 +617,8 @@ function ownerPersistActivity(main,detail,amount,meta={}){
 }
 
 async function ownerTuyaCommand(poste,turnOn){
-  if(!poste||!poste.devid||!currentTenantKey)return false;
+  const resolvedId=ownerResolvedDeviceId(poste);
+  if(!poste||!resolvedId||!currentTenantKey)return false;
   try{
     const user=firebase.auth().currentUser;
     if(!user) throw new Error('Session Firebase absente');
@@ -617,7 +629,7 @@ async function ownerTuyaCommand(poste,turnOn){
         'Content-Type':'application/json',
         'Authorization':'Bearer '+idToken
       },
-      body:JSON.stringify({tenantKey:currentTenantKey,devid:poste.devid,turnOn})
+      body:JSON.stringify({tenantKey:currentTenantKey,devid:resolvedId,turnOn})
     });
     const d=await r.json();
     if(!r.ok||!d.success){console.log('Tuya patron refusé:',d);return false;}
@@ -625,19 +637,34 @@ async function ownerTuyaCommand(poste,turnOn){
   }catch(e){console.log('Tuya patron:',e);return false;}
 }
 function ownerPendingKey(){return 'gz_patron_pending_off_'+String(currentTenantKey||'');}
-function ownerQueueOff(poste){try{const q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');q['post'+remotePostKey(poste.num)]= {num:poste.num,devid:poste.devid,ip:poste.ip||'',ts:Date.now()};localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}}
-function ownerClearOff(poste){try{const q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');delete q['post'+remotePostKey(poste.num)];localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}}
+function ownerQueueOff(poste){try{const rid=ownerResolvedDeviceId(poste);if(!rid)return;const q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');q[rid]={num:poste.num,devid:rid,ip:poste.ip||'',ts:Date.now()};localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}}
+function ownerClearOff(poste){try{const rid=ownerResolvedDeviceId(poste)||String((poste&&poste.devid)||'');const q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');delete q[rid];localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}}
 async function ownerReliableOff(poste){
-  if(!poste||!poste.devid)return true;
-  for(let k=0;k<4;k++){if(await ownerTuyaCommand(poste,false)){ownerClearOff(poste);return true;}await new Promise(r=>setTimeout(r,450*(k+1)));}
-  ownerQueueOff(poste);return false;
+  const action=ownerBeginPowerAction(poste);if(!action.id)return true;
+  const target=Object.assign({},poste,{devid:action.id});
+  ownerQueueOff(target);
+  for(let k=0;k<6;k++){
+    if(await ownerTuyaCommand(target,false)){ownerClearOff(target);return true;}
+    await new Promise(r=>setTimeout(r,500*Math.min(k+1,4)));
+  }
+  return false;
+}
+async function ownerReliableOn(poste){
+  const action=ownerBeginPowerAction(poste);if(!action.id)return false;
+  const target=Object.assign({},poste,{devid:action.id});
+  for(let k=0;k<3;k++){
+    if(ownerPowerEpoch[action.id]!==action.epoch)return false;
+    if(await ownerTuyaCommand(target,true))return true;
+    await new Promise(r=>setTimeout(r,500*(k+1)));
+  }
+  return false;
 }
 async function ownerRetryPendingOff(){
   if(!navigator.onLine)return;let q={};try{q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');}catch(e){}
-  for(const key of Object.keys(q)){const x=q[key];if(x&&x.devid){const ok=await ownerTuyaCommand(x,false);if(ok){delete q[key];}}}
+  for(const key of Object.keys(q)){const x=q[key];if(x&&x.devid){ownerPowerEpoch[x.devid]=(ownerPowerEpoch[x.devid]||0)+1;const ok=await ownerTuyaCommand(x,false);if(ok)delete q[key];}}
   try{localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}
 }
-window.addEventListener('online',ownerRetryPendingOff);setInterval(ownerRetryPendingOff,7000);
+window.addEventListener('online',ownerRetryPendingOff);setInterval(ownerRetryPendingOff,3000);
 
 function renderOwnerPayments(containerId,selectedVar){
   const el=document.getElementById(containerId);if(!el)return;
@@ -779,7 +806,7 @@ async function ownerConfirmCancel(){
     if(res.snapshot&&typeof res.snapshot.val==='function')DB._cache=res.snapshot.val()||DB._cache;
     closeModal('mo-owner-cancel');
     ownerPersistActivity(p.num+' — Vente annulée par le patron',`${local.client||'Client'} · Début ${ownerFmtClock(local.startedAt)} · Annulé ${ownerFmtClock(now)} · utilisé ${fmtRest(used)} · restant ${fmtRest(rest)} · Motif: ${reason}`,'-'+todayAmount.toLocaleString('fr-FR')+' F',{poste:p.num,client:local.client||'',sessionId:sid,typeActivite:'annulee',tempsUtiliseSec:used,tempsRestantSec:rest,montant:-todayAmount,raison:reason});
-    if(p.devid)await ownerReliableOff(p);
+    if(ownerResolvedDeviceId(p))await ownerReliableOff(p);
     renderControl();renderHome();showToast(`↩ ${p.num} annulé · ${todayAmount.toLocaleString('fr-FR')} F retirés`);
   }catch(e){console.log('Annulation patron:',e);showToast('⚠️ Annulation impossible — vérifiez Internet');}
   finally{setTimeout(()=>ownerCancelLocks.delete(lock),800);}
@@ -787,7 +814,7 @@ async function ownerConfirmCancel(){
 
 async function ownerConfirmStart(){
   const postes=DB.get('postes')||[];const p=postes[ownerPosteIdx];if(!p)return;const nom=document.getElementById('owner-client').value.trim();if(!nom){showToast('⚠️ Entrez le nom du client');return;}const tarif=ownerTarifs(p).find(t=>Number(t.min)===Number(ownerSelMin));if(!tarif){showToast('⚠️ Choisissez une durée');return;}const prix=money(tarif.prix),min=Number(tarif.min)||0;if(!prix||!min)return showToast('⚠️ Tarif invalide');const now=Date.now(),sid=String(p.num)+'-'+now+'-pat';const state={actif:true,client:nom,finTs:now+min*60000,tempsTotal:min*60,dureeMin:min,paused:false,pauseRemainingSec:0,montantSession:prix,montantJourSession:prix,paiementsSession:{},sessionId:sid,startedAt:now,updatedAt:now};state.paiementsSession[ownerSelPay]=prix;
-  try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,p,ownerPosteIdx)||{};if(remote.actif)return;rootWriteActive(root,p,ownerPosteIdx,state);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.sessionsParPoste[p.num]=Math.max(0,Number(ss.sessionsParPoste[p.num])||0)+1;ss.payStats[ownerSelPay]=money(ss.payStats[ownerSelPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Ce poste vient d’être activé ailleurs');return;}closeModal('mo-owner-start');ownerPersistActivity(p.num+' — Session démarrée par le patron',nom+' · '+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'demarrage',montant:prix});if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'✅ '+p.num+' activé et TV allumée':'⚡ '+p.num+' activé · TV à allumer manuellement');}else showToast('✅ '+p.num+' activé');renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Activation impossible — vérifiez Internet');}
+  try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,p,ownerPosteIdx)||{};if(remote.actif)return;rootWriteActive(root,p,ownerPosteIdx,state);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.sessionsParPoste[p.num]=Math.max(0,Number(ss.sessionsParPoste[p.num])||0)+1;ss.payStats[ownerSelPay]=money(ss.payStats[ownerSelPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Ce poste vient d’être activé ailleurs');return;}closeModal('mo-owner-start');ownerPersistActivity(p.num+' — Session démarrée par le patron',nom+' · '+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'demarrage',montant:prix});if(ownerResolvedDeviceId(p)){const ok=await ownerReliableOn(p);showToast(ok?'✅ '+p.num+' activé et TV allumée':'⚡ '+p.num+' activé · TV à allumer manuellement');}else showToast('✅ '+p.num+' activé');renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Activation impossible — vérifiez Internet');}
 }
 
 async function ownerConfirmPlus(){
@@ -795,8 +822,8 @@ async function ownerConfirmPlus(){
   try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,Object.assign({},p,current),ownerPosteIdx)||{};if(!remote.actif||(sid&&remote.sessionId&&remote.sessionId!==sid))return;const u=Object.assign({},remote);if(u.paused)u.pauseRemainingSec=(Number(u.pauseRemainingSec)||0)+min*60;else u.finTs=(Number(u.finTs)||Date.now())+min*60000;u.tempsTotal=(Number(u.tempsTotal)||0)+min*60;u.montantSession=money(u.montantSession)+prix;u.montantJourSession=money(u.montantJourSession)+prix;u.paiementsSession=Object.assign({},u.paiementsSession||{});u.paiementsSession[ownerPlusPay]=money(u.paiementsSession[ownerPlusPay])+prix;u.updatedAt=Date.now();rootWriteActive(root,Object.assign({},p,current),ownerPosteIdx,u);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.payStats[ownerPlusPay]=money(ss.payStats[ownerPlusPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Le poste a changé sur un autre appareil');return;}closeModal('mo-owner-plus');ownerPersistActivity(p.num+' — Prolongé par le patron',(current.client||'Client')+' · +'+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:current.client||'',sessionId:sid,typeActivite:'prolongation',dureeAjouteeSec:min*60,montant:prix});showToast('✅ +'+min+' min sur '+p.num);renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Ajout de temps impossible — vérifiez Internet');}
 }
 
-async function ownerPause(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(!a.actif||a.paused)return;const rest=remainingActive(a),sid=a.sessionId||'';try{const res=await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||(sid&&r.sessionId&&r.sessionId!==sid))return;rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},r,{paused:true,pauseRemainingSec:rest,finTs:0,updatedAt:Date.now()}));return root;},undefined,false);if(!res.committed)return showToast('⚠️ Poste modifié ailleurs');ownerPersistActivity(p.num+' — Pause par le patron',(a.client||'Client')+' · '+fmtRest(rest)+' restantes','',{poste:p.num,sessionId:sid,typeActivite:'pause'});if(p.devid)await ownerReliableOff(p);showToast('⏸ '+p.num+' en pause');}catch(e){showToast('⚠️ Pause impossible');}}
-async function ownerResume(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(!a.actif||!a.paused)return;const sid=a.sessionId||'';try{const res=await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||!r.paused||(sid&&r.sessionId&&r.sessionId!==sid))return;const rest=Math.max(0,Number(r.pauseRemainingSec)||0);if(rest<=0)return;rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},r,{paused:false,pauseRemainingSec:0,finTs:Date.now()+rest*1000,updatedAt:Date.now()}));return root;},undefined,false);if(!res.committed)return showToast('⚠️ Poste modifié ailleurs');ownerPersistActivity(p.num+' — Reprise par le patron',(a.client||'Client'),'',{poste:p.num,sessionId:sid,typeActivite:'reprise'});if(p.devid)await ownerTuyaCommand(p,true);showToast('▶ '+p.num+' repris');}catch(e){showToast('⚠️ Reprise impossible');}}
+async function ownerPause(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(!a.actif||a.paused)return;const rest=remainingActive(a),sid=a.sessionId||'';try{const res=await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||(sid&&r.sessionId&&r.sessionId!==sid))return;rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},r,{paused:true,pauseRemainingSec:rest,finTs:0,updatedAt:Date.now()}));return root;},undefined,false);if(!res.committed)return showToast('⚠️ Poste modifié ailleurs');ownerPersistActivity(p.num+' — Pause par le patron',(a.client||'Client')+' · '+fmtRest(rest)+' restantes','',{poste:p.num,sessionId:sid,typeActivite:'pause'});if(ownerResolvedDeviceId(p))await ownerReliableOff(p);showToast('⏸ '+p.num+' en pause');}catch(e){showToast('⚠️ Pause impossible');}}
+async function ownerResume(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(!a.actif||!a.paused)return;const sid=a.sessionId||'';try{const res=await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||!r.paused||(sid&&r.sessionId&&r.sessionId!==sid))return;const rest=Math.max(0,Number(r.pauseRemainingSec)||0);if(rest<=0)return;rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},r,{paused:false,pauseRemainingSec:0,finTs:Date.now()+rest*1000,updatedAt:Date.now()}));return root;},undefined,false);if(!res.committed)return showToast('⚠️ Poste modifié ailleurs');ownerPersistActivity(p.num+' — Reprise par le patron',(a.client||'Client'),'',{poste:p.num,sessionId:sid,typeActivite:'reprise'});if(ownerResolvedDeviceId(p))await ownerReliableOn(p);showToast('▶ '+p.num+' repris');}catch(e){showToast('⚠️ Reprise impossible');}}
 async function ownerPowerOff(i){
   const postes=DB.get('postes')||[];
   const p=postes[i];
@@ -857,7 +884,7 @@ async function ownerPowerOff(i){
     // La commande physique OFF reste exclusive au Patron. Si Internet/Tuya
     // ne répond pas, elle est mise en file d'attente et réessayée automatiquement.
     let tvOk=true;
-    if(p.devid)tvOk=await ownerReliableOff(p);
+    if(ownerResolvedDeviceId(p))tvOk=await ownerReliableOff(p);
 
     renderControl();renderHome();ownerRenderReport();ownerRenderHistory();
     showToast(tvOk
@@ -871,7 +898,7 @@ async function ownerPowerOff(i){
 
 async function ownerFinishExpired(i,p,a){
   const sid=a.sessionId||'';const key=sid||('idx-'+i);if(ownerFinishLocks.has(key))return;ownerFinishLocks.add(key);
-  try{if(p.devid)await ownerReliableOff(p);const res=await fbRoot.transaction(root=>{root=root||{};root.closed_sessions=root.closed_sessions||{};if(sid&&root.closed_sessions[sid])return;const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||(sid&&r.sessionId&&r.sessionId!==sid))return;rootWriteActive(root,Object.assign({},p,a),i,blankRemoteActive(r));const ss=freshSessionSnapshotFromRoot(root);ss.count=Math.max(0,Number(ss.count)||0)+1;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);if(sid)root.closed_sessions[sid]={status:'terminee_auto',ts:Date.now(),dateKey:businessDateKey(new Date()),poste:p.num};return root;},undefined,false);if(res.committed)ownerPersistActivity(p.num+' — Temps écoulé',(a.client||'Client')+' · fin automatique',money(a.montantSession).toLocaleString('fr-FR')+' F',{poste:p.num,client:a.client||'',sessionId:sid,typeActivite:'terminee_auto',tempsRestantSec:0,montant:money(a.montantSession)});}catch(e){console.log('Fin patron:',e);}finally{setTimeout(()=>ownerFinishLocks.delete(key),1500);}
+  try{if(ownerResolvedDeviceId(p))await ownerReliableOff(p);const res=await fbRoot.transaction(root=>{root=root||{};root.closed_sessions=root.closed_sessions||{};if(sid&&root.closed_sessions[sid])return;const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||(sid&&r.sessionId&&r.sessionId!==sid))return;rootWriteActive(root,Object.assign({},p,a),i,blankRemoteActive(r));const ss=freshSessionSnapshotFromRoot(root);ss.count=Math.max(0,Number(ss.count)||0)+1;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);if(sid)root.closed_sessions[sid]={status:'terminee_auto',ts:Date.now(),dateKey:businessDateKey(new Date()),poste:p.num};return root;},undefined,false);if(res.committed)ownerPersistActivity(p.num+' — Temps écoulé',(a.client||'Client')+' · fin automatique',money(a.montantSession).toLocaleString('fr-FR')+' F',{poste:p.num,client:a.client||'',sessionId:sid,typeActivite:'terminee_auto',tempsRestantSec:0,montant:money(a.montantSession)});}catch(e){console.log('Fin patron:',e);}finally{setTimeout(()=>ownerFinishLocks.delete(key),1500);}
 }
 
 setInterval(async()=>{if(!loggedIn||ownerTimerBusy)return;ownerTimerBusy=true;try{await ownerEnsureDailyRollover();const postes=DB.get('postes')||[];for(let i=0;i<postes.length;i++){const p=postes[i],a=activeForPoste(p,i);if(a&&a.actif&&!a.paused&&Number(a.finTs)>0&&Date.now()>=Number(a.finTs))await ownerFinishExpired(i,p,a);}const pg=document.getElementById('page-control');if(pg&&pg.classList.contains('active'))renderControl();const rp=document.getElementById('page-report');if(rp&&rp.classList.contains('active'))ownerRenderReport();const hp=document.getElementById('page-history');if(hp&&hp.classList.contains('active'))ownerRenderHistory();}finally{ownerTimerBusy=false;}},1000);
