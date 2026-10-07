@@ -1,10 +1,10 @@
 {
-  "name": "GameZone CI — Patron sécurisé",
+  "name": "GameZone CI — Patron V10",
   "short_name": "GameZone Patron",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0d0d1a",
   "theme_color": "#0d0d1a",
-  "description": "Espace Patron GameZone — Bonus client fidèle + annonces vocales"
+  "description": "Espace Patron GameZone — bonus client fidèle, postes alignés, annonces vocales renforcées"
 }
