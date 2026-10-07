@@ -119,8 +119,8 @@ button,.ni,.ctl-btn{touch-action:manipulation}
 .control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .ctl-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px;position:relative;overflow:hidden}
 .ctl-card.active{border-color:var(--green)}.ctl-card.paused{border-color:var(--gold)}
-/* V10 — 7e case BONUS CLIENT FIDÈLE */
-.ctl-card.bonus-master{background:linear-gradient(135deg,rgba(139,92,246,.18),rgba(245,158,11,.10));border-color:rgba(245,158,11,.65)}
+/* V11 — 7e case BONUS CLIENT FIDÈLE */
+.ctl-card.bonus-master{grid-column:1/-1;width:calc(50% - 5px);justify-self:center;background:linear-gradient(135deg,rgba(139,92,246,.18),rgba(245,158,11,.10));border-color:rgba(245,158,11,.65)}
 .bonus-master-title{font-family:var(--fd);font-size:18px;font-weight:800;color:var(--gold);line-height:1.1;margin-bottom:6px}
 .bonus-master-note{font-size:10px;color:var(--sub);line-height:1.45;margin-bottom:8px}
 .bonus-master-live{font-size:10px;line-height:1.45;padding:6px 7px;border-radius:7px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.18);margin:4px 0}
@@ -146,7 +146,7 @@ button,.ni,.ctl-btn{touch-action:manipulation}
 .dctl-min{font-family:var(--fd);font-size:15px;font-weight:700}.dctl-price{font-size:10px;color:var(--muted);margin-top:2px}
 .pctl-grid{grid-template-columns:repeat(2,1fr)}.pctl-opt{font-size:11px;font-weight:600}
 .owner-sync{font-size:10px;color:var(--muted);margin-top:-3px;margin-bottom:10px;line-height:1.45}
-@media(max-width:360px){.control-grid{grid-template-columns:1fr}.ni{font-size:8px;padding:9px 0}.ni-icon{font-size:18px}}
+@media(max-width:360px){.control-grid{grid-template-columns:1fr}.ctl-card.bonus-master{width:100%;grid-column:1/-1}.ni{font-size:8px;padding:9px 0}.ni-icon{font-size:18px}}
 @supports (-webkit-touch-callout:none){html,body{min-height:-webkit-fill-available}#app{height:-webkit-fill-available}.scroll{-webkit-overflow-scrolling:touch}}
 
 
@@ -415,9 +415,16 @@ button,.ni,.ctl-btn{touch-action:manipulation}
     <div class="ig"><label>Nom du client</label><input type="text" id="owner-bonus-client" placeholder="Ex: Koné Moussa" autocomplete="off"></div>
     <div class="ig"><label>Durée du bonus</label>
       <div class="dctl-grid" id="owner-bonus-durations">
-        <div class="dctl-opt sel" onclick="ownerChooseBonusDuration(30,this)"><div class="dctl-min">30 minutes</div><div class="dctl-price">🎁 0 F</div></div>
-        <div class="dctl-opt" onclick="ownerChooseBonusDuration(60,this)"><div class="dctl-min">60 minutes</div><div class="dctl-price">🎁 0 F</div></div>
+        <div class="dctl-opt" onclick="ownerChooseBonusDuration(10,this)"><div class="dctl-min">10 min</div><div class="dctl-price">🎁 0 F</div></div>
+        <div class="dctl-opt sel" onclick="ownerChooseBonusDuration(20,this)"><div class="dctl-min">20 min</div><div class="dctl-price">🎁 0 F</div></div>
+        <div class="dctl-opt" onclick="ownerChooseBonusDuration(30,this)"><div class="dctl-min">30 min</div><div class="dctl-price">🎁 0 F</div></div>
+        <div class="dctl-opt" onclick="ownerChooseBonusDuration(60,this)"><div class="dctl-min">60 min</div><div class="dctl-price">🎁 0 F</div></div>
       </div>
+    </div>
+    <div class="ig">
+      <label>Ou entrer le temps que vous voulez (minutes)</label>
+      <input type="number" id="owner-bonus-custom" min="1" max="600" step="1" value="20" inputmode="numeric" oninput="ownerCustomBonusChanged(this.value)" placeholder="Ex : 15, 20, 45, 90">
+      <div style="font-size:10px;color:var(--muted);margin-top:5px">Vous pouvez mettre n’importe quelle durée de 1 à 600 minutes. Le montant reste à 0 F.</div>
     </div>
     <div id="owner-bonus-info" style="font-size:11px;color:var(--sub);line-height:1.5;margin-top:8px"></div>
     <div class="ma"><button class="btn-cancel" onclick="closeModal('mo-owner-bonus')">Annuler</button><button class="btn-ok" onclick="ownerConfirmBonus()">Offrir le bonus 🎁</button></div>
@@ -625,7 +632,7 @@ function ownerSubtractPosteBreakdown(source,num,amount){const out=Object.assign(
 function ownerFmtClock(ts){if(!ts)return '—';const d=new Date(Number(ts));return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;}
 
 function ownerTarifs(poste){return (DB.get('tarifs')||[]).filter(t=>(t.console||'PS5')===(poste.type||'PS5')).sort((a,b)=>(Number(a.min)||0)-(Number(b.min)||0));}
-// V10 — annonces vocales Patron robustes + avertissement 5 minutes
+// V11 — annonces vocales Patron robustes + avertissement 5 minutes
 function ownerSpeechPosteName(num){const m=String(num==null?'':num).match(/\d+/);return m?('Poste '+m[0]):String(num||'Poste');}
 let ownerVoiceUtterance=null,ownerVoiceRetryTimer=null,ownerVoicePrimed=false;
 function ownerFrenchVoice(){try{const vs=window.speechSynthesis.getVoices()||[];return vs.find(v=>/^fr[-_]/i.test(v.lang||'')&&/France|French|français|francais/i.test((v.name||'')+' '+(v.lang||'')))||vs.find(v=>/^fr[-_]/i.test(v.lang||''))||vs.find(v=>/^fr\b/i.test(v.lang||''))||null;}catch(e){return null;}}
@@ -637,11 +644,20 @@ function ownerSpeak(text,attempt=0){
     if(!('speechSynthesis'in window)||typeof SpeechSynthesisUtterance==='undefined'){console.log('Synthèse vocale Patron indisponible');return false;}
     ownerPrimeVoice();const s=window.speechSynthesis;
     if(ownerVoiceRetryTimer){clearTimeout(ownerVoiceRetryTimer);ownerVoiceRetryTimer=null;}
-    const u=new SpeechSynthesisUtterance(msg),v=ownerFrenchVoice();if(v){u.voice=v;u.lang=v.lang||'fr-FR';}else u.lang='fr-FR';u.rate=.90;u.pitch=1;u.volume=1;ownerVoiceUtterance=u;let started=false;
-    u.onstart=()=>{started=true;};u.onend=()=>{if(ownerVoiceUtterance===u)ownerVoiceUtterance=null;};
-    u.onerror=(ev)=>{console.log('Vocal Patron erreur:',ev&&ev.error);if(attempt<2)ownerVoiceRetryTimer=setTimeout(()=>ownerSpeak(msg,attempt+1),350);};
-    try{s.cancel();}catch(e){}try{s.resume();}catch(e){}
-    setTimeout(()=>{try{s.resume();s.speak(u);setTimeout(()=>{try{if(s.paused)s.resume();if(!started&&!s.speaking&&attempt<2)ownerVoiceRetryTimer=setTimeout(()=>ownerSpeak(msg,attempt+1),120);}catch(e){}},650);}catch(e){if(attempt<2)ownerVoiceRetryTimer=setTimeout(()=>ownerSpeak(msg,attempt+1),350);}},70);
+    const u=new SpeechSynthesisUtterance(msg),v=ownerFrenchVoice();
+    if(v){u.voice=v;u.lang=v.lang||'fr-FR';}else u.lang='fr-FR';
+    u.rate=.90;u.pitch=1;u.volume=1;ownerVoiceUtterance=u;let started=false;
+    u.onstart=()=>{started=true;};
+    u.onend=()=>{if(ownerVoiceUtterance===u)ownerVoiceUtterance=null;};
+    u.onerror=(ev)=>{console.log('Vocal Patron erreur:',ev&&ev.error);if(attempt<3)ownerVoiceRetryTimer=setTimeout(()=>ownerSpeak(msg,attempt+1),300);};
+    try{s.resume();}catch(e){}
+    // IMPORTANT mobile : on lance speak() immédiatement dans le clic utilisateur.
+    // Le délai n'est utilisé qu'en secours si le moteur TTS ne démarre pas.
+    try{s.speak(u);}catch(e){if(attempt<3)ownerVoiceRetryTimer=setTimeout(()=>ownerSpeak(msg,attempt+1),250);}
+    setTimeout(()=>{try{
+      if(s.paused)s.resume();
+      if(!started&&!s.speaking&&attempt<3)ownerVoiceRetryTimer=setTimeout(()=>ownerSpeak(msg,attempt+1),180);
+    }catch(e){}},700);
     return true;
   }catch(e){console.log('Vocal Patron:',e);return false;}
 }
@@ -734,13 +750,35 @@ function renderControl(){
 function ownerRenderBonusCard(postes){
   const actifs=(postes||[]).map((p,i)=>({p,a:activeForPoste(p,i)||{}})).filter(x=>x.a.actif&&x.a.bonus);
   const details=actifs.length?actifs.map(x=>'<div class="bonus-master-live"><b>'+esc(ownerSpeechPosteName(x.p.num))+'</b> · '+esc(x.a.client||'Client')+' · 🎁 '+Math.max(0,Number(x.a.bonusMinutesAdded||x.a.bonusDurationMin)||0)+' min offertes · restant '+fmtRest(remainingActive(x.a))+'</div>').join(''):'<div class="bonus-master-live" style="color:var(--muted)">Aucun bonus en cours.</div>';
-  return '<div class="ctl-card bonus-master"><div class="bonus-master-title">🎁 CASE 7 — BONUS CLIENT FIDÈLE</div><div class="bonus-master-note">Réservé au Patron · 0 F · choisissez le poste et la durée. Le Gérant voit le bonus mais ne peut pas l’offrir.</div>'+details+'<button class="bonus-owner-btn" onclick="ownerOpenBonus()">🎁 OFFRIR / AJOUTER UN BONUS</button></div>';
+  return '<div class="ctl-card bonus-master"><div class="bonus-master-title">🎁 CASE 7 — BONUS CLIENT FIDÈLE</div><div class="bonus-master-note">Réservé au Patron · 0 F · choisissez le poste puis entrez la durée que vous voulez. Le Gérant voit le bonus mais ne peut pas l’offrir.</div>'+details+'<button class="bonus-owner-btn" onclick="ownerOpenBonus()">🎁 OFFRIR / AJOUTER UN BONUS</button></div>';
 }
-function ownerChooseBonusDuration(min,el){ownerBonusMin=Math.max(1,Number(min)||30);document.querySelectorAll('#owner-bonus-durations .dctl-opt').forEach(x=>x.classList.remove('sel'));if(el)el.classList.add('sel');ownerBonusPostChanged();}
+function ownerChooseBonusDuration(min,el){
+  ownerBonusMin=Math.max(1,Math.min(600,Math.floor(Number(min)||20)));
+  document.querySelectorAll('#owner-bonus-durations .dctl-opt').forEach(x=>x.classList.remove('sel'));
+  if(el)el.classList.add('sel');
+  const custom=document.getElementById('owner-bonus-custom');if(custom)custom.value=ownerBonusMin;
+  ownerBonusPostChanged();
+}
+function ownerCustomBonusChanged(value){
+  const n=Math.max(1,Math.min(600,Math.floor(Number(value)||0)));
+  if(!Number.isFinite(n)||n<1)return;
+  ownerBonusMin=n;
+  document.querySelectorAll('#owner-bonus-durations .dctl-opt').forEach(x=>x.classList.remove('sel'));
+  ownerBonusPostChanged();
+}
 function ownerOpenBonus(){
-  const postes=DB.get('postes')||[];if(!postes.length)return showToast('⚠️ Aucun poste configuré');ownerBonusMin=30;
-  const sel=document.getElementById('owner-bonus-poste');sel.innerHTML=ownerOrderedPostesEntries(postes).map(({p,i})=>{const a=activeForPoste(p,i)||{};return '<option value="'+i+'">'+esc(ownerSpeechPosteName(p.num))+' — '+(a.actif?('ACTIF · '+esc(a.client||'Client')):'LIBRE')+'</option>';}).join('');
-  document.getElementById('owner-bonus-client').value='';document.querySelectorAll('#owner-bonus-durations .dctl-opt').forEach((x,i)=>x.classList.toggle('sel',i===0));ownerBonusPostChanged();openModal('mo-owner-bonus');
+  const postes=DB.get('postes')||[];if(!postes.length)return showToast('⚠️ Aucun poste configuré');ownerBonusMin=20;
+  const sel=document.getElementById('owner-bonus-poste');
+  sel.innerHTML=ownerOrderedPostesEntries(postes).map(({p,i})=>{
+    const a=activeForPoste(p,i)||{};
+    const type=esc(p.type||'Console');
+    const statut=a.actif?('ACTIF · '+esc(a.client||'Client')):'LIBRE';
+    return '<option value="'+i+'">'+esc(ownerSpeechPosteName(p.num))+' — '+type+' — '+statut+'</option>';
+  }).join('');
+  document.getElementById('owner-bonus-client').value='';
+  const custom=document.getElementById('owner-bonus-custom');if(custom)custom.value='20';
+  document.querySelectorAll('#owner-bonus-durations .dctl-opt').forEach((x,i)=>x.classList.toggle('sel',i===1));
+  ownerBonusPostChanged();openModal('mo-owner-bonus');
 }
 function ownerBonusPostChanged(){
   const postes=DB.get('postes')||[],idx=Number(document.getElementById('owner-bonus-poste').value)||0,p=postes[idx];if(!p)return;
@@ -750,8 +788,12 @@ function ownerBonusPostChanged(){
 }
 async function ownerConfirmBonus(){
   const postes=DB.get('postes')||[],idx=Number(document.getElementById('owner-bonus-poste').value)||0,p=postes[idx];if(!p)return;
-  const local=activeForPoste(p,idx)||{},min=Math.max(1,Number(ownerBonusMin)||30),now=Date.now();let nom=(document.getElementById('owner-bonus-client').value||'').trim();if(local.actif)nom=local.client||nom;if(!nom)return showToast('⚠️ Entrez le nom du client');
+  const local=activeForPoste(p,idx)||{},custom=document.getElementById('owner-bonus-custom'),min=Math.max(1,Math.min(600,Math.floor(Number(custom&&custom.value)||Number(ownerBonusMin)||20))),now=Date.now();ownerBonusMin=min;let nom=(document.getElementById('owner-bonus-client').value||'').trim();if(local.actif)nom=local.client||nom;if(!nom)return showToast('⚠️ Entrez le nom du client');
   ownerPrimeVoice();
+  const directBonusVoice=local.actif
+    ?('Bonus client fidèle. '+ownerSpeechPosteName(p.num)+' reçoit '+min+' minutes supplémentaires.')
+    :('Bonus client fidèle. '+ownerSpeechPosteName(p.num)+' est activé pour '+min+' minutes.');
+  ownerSpeak(directBonusVoice);
   try{
     let sid=local.sessionId||('bonus-'+String(p.num)+'-'+now),startedNew=!local.actif,finalTs=0;
     const res=await fbRoot.transaction(root=>{
@@ -762,8 +804,8 @@ async function ownerConfirmBonus(){
     },undefined,false);
     if(!res.committed)return showToast('⚠️ Le poste a changé sur un autre appareil');if(res.snapshot&&typeof res.snapshot.val==='function')DB._cache=res.snapshot.val()||DB._cache;closeModal('mo-owner-bonus');
     const finTexte=finalTs?ownerFmtClock(finalTs):(local.paused?'EN PAUSE':'—');ownerPersistActivity(p.num+' — 🎁 Bonus offert',nom+' · '+min+' min offertes · Début '+ownerFmtClock(now)+' · Fin prévue '+finTexte+' · Tarif inchangé','0 F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'bonus_offert',bonus:true,bonusOnly:startedNew,dureeSec:min*60,debutTs:now,finPrevueTs:finalTs,montant:0});
-    if(startedNew){ownerAnnounceStartOnce(sid,p.num,min,true);if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'🎁 '+p.num+' bonus '+min+' min · TV allumée':'🎁 '+p.num+' bonus activé · commande TV non confirmée');}else showToast('🎁 '+p.num+' bonus '+min+' min activé');}
-    else{ownerSpeak('Bonus client fidèle. '+ownerSpeechPosteName(p.num)+' reçoit '+min+' minutes supplémentaires.');showToast('🎁 +'+min+' min offertes sur '+p.num+' · recette inchangée');}
+    if(startedNew){try{localStorage.setItem(ownerVoiceStartKey(sid),'1');}catch(e){}if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'🎁 '+p.num+' bonus '+min+' min · TV allumée':'🎁 '+p.num+' bonus activé · commande TV non confirmée');}else showToast('🎁 '+p.num+' bonus '+min+' min activé');}
+    else{showToast('🎁 +'+min+' min offertes sur '+p.num+' · recette inchangée');}
     renderControl();renderHome();ownerRenderJournal();
   }catch(e){console.log('Bonus Patron:',e);showToast('⚠️ Bonus impossible — vérifiez Internet');}
 }
@@ -878,7 +920,7 @@ async function ownerConfirmCancel(){
 
 async function ownerConfirmStart(){
   const postes=DB.get('postes')||[];const p=postes[ownerPosteIdx];if(!p)return;const nom=document.getElementById('owner-client').value.trim();if(!nom){showToast('⚠️ Entrez le nom du client');return;}const tarif=ownerTarifs(p).find(t=>Number(t.min)===Number(ownerSelMin));if(!tarif){showToast('⚠️ Choisissez une durée');return;}const prix=money(tarif.prix),min=Number(tarif.min)||0;if(!prix||!min)return showToast('⚠️ Tarif invalide');const now=Date.now(),sid=String(p.num)+'-'+now+'-pat';const state={actif:true,client:nom,finTs:now+min*60000,tempsTotal:min*60,dureeMin:min,paused:false,pauseRemainingSec:0,montantSession:prix,montantJourSession:prix,paiementsSession:{},sessionId:sid,startedAt:now,updatedAt:now};state.paiementsSession[ownerSelPay]=prix;
-  ownerPrimeVoice();try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,p,ownerPosteIdx)||{};if(remote.actif)return;rootWriteActive(root,p,ownerPosteIdx,state);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.sessionsParPoste[p.num]=Math.max(0,Number(ss.sessionsParPoste[p.num])||0)+1;ss.payStats[ownerSelPay]=money(ss.payStats[ownerSelPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Ce poste vient d’être activé ailleurs');return;}closeModal('mo-owner-start');ownerPersistActivity(p.num+' — Session démarrée par le patron',nom+' · '+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'demarrage',montant:prix});ownerAnnounceStartOnce(sid,p.num,min,false);if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'✅ '+p.num+' activé et TV allumée':'⚡ '+p.num+' activé · TV à allumer manuellement');}else showToast('✅ '+p.num+' activé');renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Activation impossible — vérifiez Internet');}
+  ownerPrimeVoice();ownerSpeak(ownerSpeechPosteName(p.num)+' est activé pour '+min+' minutes.');try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,p,ownerPosteIdx)||{};if(remote.actif)return;rootWriteActive(root,p,ownerPosteIdx,state);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.sessionsParPoste[p.num]=Math.max(0,Number(ss.sessionsParPoste[p.num])||0)+1;ss.payStats[ownerSelPay]=money(ss.payStats[ownerSelPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Ce poste vient d’être activé ailleurs');return;}closeModal('mo-owner-start');ownerPersistActivity(p.num+' — Session démarrée par le patron',nom+' · '+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'demarrage',montant:prix});try{localStorage.setItem(ownerVoiceStartKey(sid),'1');}catch(e){}if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'✅ '+p.num+' activé et TV allumée':'⚡ '+p.num+' activé · TV à allumer manuellement');}else showToast('✅ '+p.num+' activé');renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Activation impossible — vérifiez Internet');}
 }
 
 async function ownerConfirmPlus(){
