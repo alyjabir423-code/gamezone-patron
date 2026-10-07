@@ -158,8 +158,13 @@ button,.ni,.ctl-btn{touch-action:manipulation}
 .owner-hist-list{display:flex;flex-direction:column;gap:8px;padding:9px}.owner-hist-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 11px}.owner-hist-head{display:flex;justify-content:space-between;gap:8px}.owner-hist-title{font-family:var(--fd);font-size:14px;font-weight:700}.owner-hist-amount{font-family:var(--fd);font-size:14px;font-weight:700;color:#22c55e;white-space:nowrap}.owner-hist-meta{font-size:10px;color:#6b7280;line-height:1.45;margin-top:4px}.owner-hist-postes{font-size:10px;color:#9ca3af;line-height:1.5;margin-top:5px}.owner-hist-activities{margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:5px}.owner-hist-act{font-size:10px;line-height:1.45;color:#9ca3af;background:rgba(255,255,255,.02);border-radius:7px;padding:6px 7px}.owner-hist-act b{color:#f1f0ff}.owner-hist-act .tm{color:#c084fc;font-weight:700}.owner-hist-zero{padding:14px;text-align:center;color:#6b7280;font-size:12px}
 .ctl-progress{height:4px;background:#252540;border-radius:4px;overflow:hidden;margin:7px 0}.ctl-progress-bar{height:100%;background:#22c55e;border-radius:4px;transition:width 1s linear}.ctl-card.paused .ctl-progress-bar{background:#eab308}
 @media(max-width:390px){.owner-stat{padding:11px 12px}.owner-stat-value{font-size:27px}.owner-stat-sub{font-size:9px}.ni{min-width:68px;flex-basis:68px}}
+.btn-reconnect{width:100%;padding:12px;margin-top:10px;background:rgba(99,102,241,.10);border:1px solid rgba(99,102,241,.35);border-radius:var(--rs);color:#a5b4fc;font-weight:700;font-size:12px;letter-spacing:.4px;cursor:pointer}
+.btn-reconnect:active{opacity:.75}
+#reconnect-screen{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:510;padding:32px 20px}
+.reconnect-info{font-size:11px;color:var(--sub);line-height:1.55;margin-bottom:14px;padding:10px 12px;border-radius:9px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.18)}
 
 </style>
+<link rel="manifest" href="manifest.webmanifest">
 </head>
 <body>
 
@@ -171,31 +176,46 @@ button,.ni,.ctl-btn{touch-action:manipulation}
 <div id="setup-screen">
   <div class="login-icon">🕹️</div>
   <div class="login-logo">CONFIGURATION</div>
-  <div class="login-sub">Première mise en service</div>
+  <div class="login-sub">Salle GameZone</div>
   <div class="login-card">
-    <div class="ig"><label>Nom de votre salle</label><input type="text" id="su-name" placeholder="Ex: Cyber Lounge Cocody" autocomplete="off"></div>
+    <div style="font-size:12px;color:var(--sub);line-height:1.55;margin-bottom:14px">Pour une <b style="color:var(--gold)">nouvelle salle</b>, remplissez les informations ci-dessous. Si la salle existe déjà, utilisez le bouton de reconnexion sans recréer le compte Patron.</div>
+    <div class="ig"><label>Nom de votre salle</label><input type="text" id="su-name" placeholder="Ex: IMRANNE" autocomplete="off"></div>
     <div class="ig"><label>Clé d'activation</label><input type="text" id="su-key" placeholder="GZ-XXXXX" autocomplete="off" style="text-transform:uppercase"></div>
     <div class="ig"><label>Identifiant patron (à créer)</label><input type="text" id="su-id" placeholder="Ex: patron" autocomplete="off"></div>
     <div class="ig"><label>Mot de passe patron (à créer)</label><input type="password" id="su-pass" placeholder="••••••" autocomplete="off"></div>
-    <button class="btn-login" onclick="doSetup()">Activer et configurer</button>
+    <button class="btn-login" onclick="doSetup()">Créer / activer une nouvelle salle</button>
+    <button class="btn-reconnect" onclick="showReconnectScreen()">🔄 Reconnecter une salle existante</button>
     <div class="lerr" id="suerr"></div>
   </div>
-  <div style="font-size:11px;color:var(--muted);margin-top:14px;text-align:center">La clé d'activation vous a été fournie par votre fournisseur.</div>
+  <div style="font-size:11px;color:var(--muted);margin-top:14px;text-align:center">Une reconnexion ne modifie aucune donnée de la salle.</div>
+</div>
+
+<div id="reconnect-screen">
+  <div class="login-icon">🔄</div>
+  <div class="login-logo">RECONNEXION</div>
+  <div class="login-sub">Salle existante</div>
+  <div class="login-card">
+    <div class="reconnect-info">✅ Cette fonction reconnecte seulement ce téléphone à une salle existante. Elle ne modifie ni le compte Patron, ni les postes, ni les tarifs, ni les recettes, ni l'historique.</div>
+    <div class="ig"><label>Clé de la salle existante</label><input type="text" id="re-key" placeholder="Ex: GZ-29051" autocomplete="off" style="text-transform:uppercase"></div>
+    <button class="btn-login" id="reconnect-btn" onclick="reconnectExistingRoom()">Reconnecter cette salle</button>
+    <button class="btn-reconnect" onclick="showNewRoomSetup()">← Créer une nouvelle salle</button>
+    <div class="lerr" id="re-err"></div>
+  </div>
 </div>
 
 <div id="login-screen">
   <div class="login-icon">👑</div>
   <div class="login-logo" id="ll-logo">GAMEZONE CI</div>
-  <div class="login-sub">Espace Propriétaire</div>
+  <div class="login-sub">Espace Propriétaire · Sécurisé</div>
   <div class="login-card">
-    <div class="ig"><label>Identifiant</label><input type="text" id="lu" placeholder="patron" autocomplete="off"></div>
-    <div class="ig"><label>Mot de passe</label><input type="password" id="lp" placeholder="••••••"></div>
+    <div class="ig"><label>E-mail Patron</label><input type="email" id="lu" placeholder="votre@email.com" autocomplete="username"></div>
+    <div class="ig"><label>Mot de passe Firebase</label><input type="password" id="lp" placeholder="••••••" autocomplete="current-password"></div>
     <button class="btn-login" onclick="doLogin()">Accéder</button>
     <div class="lerr" id="lerr"></div>
   </div>
-  <div style="margin-top:20px;padding:12px 16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:10px;max-width:340px;width:100%;text-align:center;cursor:pointer" onclick="resetRoomKey()">
-    <div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:2px">⚠️ Nouvelle installation pour un autre commerce ?</div>
-    <div style="font-size:11px;color:var(--muted);text-decoration:underline">Réinitialiser cet appareil</div>
+  <div style="margin-top:20px;padding:12px 16px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);border-radius:10px;max-width:340px;width:100%;text-align:center">
+    <div style="font-size:12px;font-weight:700;color:#34d399;margin-bottom:2px">🔐 Connexion sécurisée Firebase</div>
+    <div style="font-size:11px;color:var(--muted)">Salle CP1 Gaming · accès réservé au compte Patron autorisé.</div>
   </div>
 </div>
 
@@ -287,7 +307,7 @@ button,.ni,.ctl-btn{touch-action:manipulation}
     <div class="page" id="page-postes">
       <div class="sh"><h2>Postes & Prises Tuya</h2><span id="nb-postes">0</span></div>
       <div class="info-box">
-        🔌 Chaque poste peut être lié à une <b>Smart Plug Tuya</b>. Renseignez l'<b>IP locale</b>, le <b>Device ID</b> et la <b>Local Key</b> de chaque prise pour activer la coupure automatique.
+        🔐 Chaque poste peut être lié à une <b>Smart Plug Tuya</b>. Renseignez uniquement son <b>Device ID</b>. Les clés Tuya restent protégées dans Cloudflare Worker.
       </div>
       <div class="card" id="list-postes"></div>
       <button class="btn-add" onclick="openModalPoste()">+ Ajouter un poste</button>
@@ -312,12 +332,11 @@ button,.ni,.ctl-btn{touch-action:manipulation}
     <div class="page" id="page-params">
       <div class="sh"><h2>Paramètres</h2></div>
       <div class="info-box">
-        🔑 Créez votre propre compte développeur gratuit sur <b>iot.tuya.com</b>, puis renseignez ici votre <b>Client ID</b> et <b>Client Secret</b> (visibles dans votre projet Tuya Cloud). Ces identifiants restent propres à votre compte et ne sont partagés avec personne d'autre.
+        🔐 <b>Tuya sécurisé.</b> Le Client ID et le Client Secret sont conservés uniquement dans Cloudflare Worker et ne sont plus enregistrés dans Firebase ni dans cette application.
       </div>
-      <div class="ig"><label>Tuya Client ID</label><input type="text" id="pr-tuya-id" placeholder="Depuis iot.tuya.com" autocomplete="off"></div>
-      <div class="ig"><label>Tuya Client Secret</label><input type="text" id="pr-tuya-secret" placeholder="Depuis iot.tuya.com" autocomplete="off"></div>
-      <button class="btn-ok" style="width:100%;margin-top:12px" onclick="saveTuyaConfig()">💾 Enregistrer</button>
-      <div class="test-result" id="tuya-config-result"></div>
+      <div class="info-box" style="margin-top:10px">
+        ✅ Firebase Authentication actif<br>✅ Worker Tuya sécurisé actif<br>✅ Salle : <b>CP1 Gaming (GZ-07732)</b>
+      </div>
     </div>
 
   </div>
@@ -394,20 +413,13 @@ button,.ni,.ctl-btn{touch-action:manipulation}
       </select>
     </div>
 
-    <div style="margin:16px 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">🔌 Configuration Prise Tuya (optionnel)</div>
-    <div class="info-box">Laissez vide si vous n'avez pas encore la prise. Vous pourrez configurer plus tard.</div>
-    <div class="ig"><label>IP locale de la prise</label><input type="text" id="p-ip" placeholder="Ex: 192.168.1.45" inputmode="decimal"></div>
-    <div class="ig"><label>Device ID</label><input type="text" id="p-devid" placeholder="Depuis iot.tuya.com" autocomplete="off"></div>
-    <div class="ig"><label>Local Key</label><input type="text" id="p-key" placeholder="Clé locale Tuya" autocomplete="off"></div>
-    <div class="ig">
-      <label>Version protocole Tuya</label>
-      <select id="p-ver">
-        <option value="3.3">3.3 (la plus courante)</option>
-        <option value="3.1">3.1</option>
-        <option value="3.4">3.4</option>
-      </select>
-    </div>
-    <button class="test-btn" onclick="testerPrise()">🧪 Tester la connexion prise</button>
+    <div style="margin:16px 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">🔌 Prise Tuya Cloud</div>
+    <div class="info-box">Seul le <b>Device ID</b> est enregistré pour le poste. Les clés Tuya restent protégées dans Cloudflare.</div>
+    <div class="ig"><label>Device ID</label><input type="text" id="p-devid" placeholder="Depuis Tuya Developer" autocomplete="off"></div>
+    <input type="hidden" id="p-ip" value="">
+    <input type="hidden" id="p-key" value="">
+    <input type="hidden" id="p-ver" value="3.3">
+    <button class="test-btn" onclick="testerPrise()">🧪 Vérifier le Worker sécurisé</button>
     <div class="test-result" id="test-result"></div>
     <input type="hidden" id="p-edit-idx" value="-1">
     <div class="ma">
@@ -448,7 +460,7 @@ button,.ni,.ctl-btn{touch-action:manipulation}
     <div class="mt" id="mo-gerant-title">Nouveau gérant</div>
     <div class="ig"><label>Nom complet</label><input type="text" id="g-nom" placeholder="Ex: Konaté Ibrahima" autocomplete="off"></div>
     <div class="ig"><label>Identifiant</label><input type="text" id="g-id" placeholder="Ex: gerant1" autocomplete="off"></div>
-    <div class="ig"><label>Mot de passe</label><input type="password" id="g-pass" placeholder="••••"></div>
+    <div class="info-box">🔐 Le mot de passe de connexion du Gérant est géré dans Firebase Authentication et n’est jamais enregistré ici.</div><input type="hidden" id="g-pass" value="">
     <input type="hidden" id="g-edit-idx" value="-1">
     <div class="ma">
       <button class="btn-cancel" onclick="closeModal('mo-gerant')">Annuler</button>
@@ -460,22 +472,25 @@ button,.ni,.ctl-btn{touch-action:manipulation}
 <div class="toast" id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ══════════════════════════════════════
 // STOCKAGE PARTAGÉ — FIREBASE (synchro temps réel)
 // ══════════════════════════════════════
 const firebaseConfig = {
-  apiKey: "AIzaSyCJo7cZltS5x8OslLuz9SVNedkhaxTARqU",
-  authDomain: "acarde-de-gestion.firebaseapp.com",
-  databaseURL: "https://acarde-de-gestion-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "acarde-de-gestion",
-  storageBucket: "acarde-de-gestion.firebasestorage.app",
-  messagingSenderId: "138514400044",
-  appId: "1:138514400044:web:56e52f60cecc73b0436289"
+  apiKey: "AIzaSyCXGaITdriNeK4f8uAzYnJ5M6v_Zdd75JQ",
+  authDomain: "game-zone-bah.firebaseapp.com",
+  databaseURL: "https://game-zone-bah-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "game-zone-bah",
+  storageBucket: "game-zone-bah.firebasestorage.app",
+  messagingSenderId: "305472308949",
+  appId: "1:305472308949:web:db30eeb32a88ce77fd845c"
 };
 firebase.initializeApp(firebaseConfig);
+const ROOM_KEY='GZ-07732';
 let fbRoot=null;
+let patronBootStarted=false;
 
 const DB={
   _cache:{},
@@ -492,6 +507,10 @@ const DB={
 };
 
 function connectTenant(tenantKey){
+  if(fbRoot){ try{fbRoot.off();}catch(e){} }
+  DB._cache={};
+  DB._ready=false;
+  DB._readyCbs=[];
   fbRoot = firebase.database().ref('gz_'+tenantKey);
   fbRoot.on('value', function(snap){
     DB._cache = snap.val() || {};
@@ -504,7 +523,8 @@ function connectTenant(tenantKey){
     }
   }, function(err){
     console.log('Erreur connexion Firebase:', err);
-    showToast('⚠️ Connexion au serveur impossible');
+    document.getElementById('fb-loading').style.display='none';
+    showToast('⚠️ Accès Firebase refusé ou connexion impossible');
   });
 }
 
@@ -522,7 +542,7 @@ const OWNER_PAYS=[
   {id:'mtn',lbl:'MTN MoMo',emoji:'🟡'},
   {id:'wave',lbl:'Wave',emoji:'🌊'}
 ];
-const TUYA_WORKER_URL='https://snowy-bush-885d.kassiherberta.workers.dev';
+const TUYA_WORKER_URL='https://gamezone-tuya-bah.bahmamadou4234.workers.dev';
 let currentTenantKey=null;
 let ownerPosteIdx=-1, ownerSelMin=0, ownerSelPay='especes', ownerPlusMin=0, ownerPlusPay='especes', ownerCancelIdx=-1;
 let ownerTimerBusy=false;
@@ -587,7 +607,22 @@ function ownerPersistActivity(main,detail,amount,meta={}){
 
 async function ownerTuyaCommand(poste,turnOn){
   if(!poste||!poste.devid||!currentTenantKey)return false;
-  try{const r=await fetch(TUYA_WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenantKey:currentTenantKey,devid:poste.devid,turnOn})});const d=await r.json();return !!d.success;}catch(e){console.log('Tuya patron:',e);return false;}
+  try{
+    const user=firebase.auth().currentUser;
+    if(!user) throw new Error('Session Firebase absente');
+    const idToken=await user.getIdToken();
+    const r=await fetch(TUYA_WORKER_URL,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+idToken
+      },
+      body:JSON.stringify({tenantKey:currentTenantKey,devid:poste.devid,turnOn})
+    });
+    const d=await r.json();
+    if(!r.ok||!d.success){console.log('Tuya patron refusé:',d);return false;}
+    return true;
+  }catch(e){console.log('Tuya patron:',e);return false;}
 }
 function ownerPendingKey(){return 'gz_patron_pending_off_'+String(currentTenantKey||'');}
 function ownerQueueOff(poste){try{const q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');q['post'+remotePostKey(poste.num)]= {num:poste.num,devid:poste.devid,ip:poste.ip||'',ts:Date.now()};localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}}
@@ -878,65 +913,84 @@ function initApp2(){
 }
 
 function boot(){
-  const cfg=DB.get('config');
-  if(!cfg){
-    document.getElementById('setup-screen').style.display='flex';
-  } else {
-    applyBranding();
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('reconnect-screen').style.display='none';
+  document.getElementById('fb-loading').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+}
+
+// La création/reconnexion par ancien identifiant est désactivée dans la version sécurisée.
+function doSetup(){ showToast('🔐 Configuration gérée par Firebase Authentication'); }
+function resetRoomKey(){ showToast('🔐 Salle sécurisée : GZ-07732'); }
+function showReconnectScreen(){ showToast('🔐 Reconnexion gérée automatiquement par Firebase'); }
+function showNewRoomSetup(){ showToast('🔐 Configuration sécurisée active'); }
+async function reconnectExistingRoom(){ showToast('🔐 Reconnexion gérée automatiquement par Firebase'); }
+
+async function startSecurePatron(user){
+  if(!user) return;
+  const err=document.getElementById('lerr');
+  try{
+    document.getElementById('fb-loading').style.display='flex';
+    const roomNode='gz_'+ROOM_KEY;
+    const roleSnap=await firebase.database().ref('access/'+user.uid+'/rooms/'+roomNode).once('value');
+    const role=roleSnap.val();
+    if(role!=='patron'){
+      await firebase.auth().signOut();
+      throw new Error('Ce compte n’est pas autorisé comme Patron de CP1 Gaming.');
+    }
+    currentTenantKey=ROOM_KEY;
+    localStorage.setItem('gz_room_key',ROOM_KEY);
+    connectTenant(ROOM_KEY);
+    DB.onReady(function(){
+      patronBootStarted=true;
+      loggedIn=true;
+      document.getElementById('fb-loading').style.display='none';
+      document.getElementById('setup-screen').style.display='none';
+      document.getElementById('reconnect-screen').style.display='none';
+      document.getElementById('login-screen').style.display='none';
+      document.getElementById('app').style.display='flex';
+      applyBranding();
+      initApp();
+      DB.onChange(refreshFromRemote);
+      ownerRetryPendingOff();
+    });
+  }catch(e){
+    console.log('Connexion Patron sécurisée:',e);
+    document.getElementById('fb-loading').style.display='none';
+    document.getElementById('app').style.display='none';
     document.getElementById('login-screen').style.display='flex';
+    if(err) err.textContent=e&&e.message?e.message:'Connexion impossible.';
   }
 }
 
-// SETUP (première mise en service)
-function doSetup(){
-  const name=document.getElementById('su-name').value.trim();
-  const key=document.getElementById('su-key').value.trim().toUpperCase();
-  const id=document.getElementById('su-id').value.trim();
-  const pass=document.getElementById('su-pass').value;
-  const err=document.getElementById('suerr');
-  if(!name||!key||!id||!pass){err.textContent='Remplissez tous les champs.';return;}
-  if(key!==checksumKey(name)){err.textContent='Clé d\'activation invalide pour ce nom de salle.';return;}
-  err.textContent='';
-  document.getElementById('setup-screen').style.display='none';
-  document.getElementById('fb-loading').style.display='flex';
-  localStorage.setItem('gz_room_key',key);
-  connectTenant(key);
-  DB.onReady(function(){
-    document.getElementById('fb-loading').style.display='none';
-    DB.set('config',{businessName:name,activatedAt:new Date().toISOString()});
-    DB.set('patron',{id,pass});
-    initApp2();
-    applyBranding();
-    document.getElementById('login-screen').style.display='flex';
-    showToast('✅ Configuration terminée, connectez-vous');
-    DB.onChange(refreshFromRemote);
-  });
+// AUTH FIREBASE — e-mail + mot de passe
+async function doLogin(){
+  const email=document.getElementById('lu').value.trim();
+  const pass=document.getElementById('lp').value;
+  const err=document.getElementById('lerr');
+  if(!email||!pass){if(err)err.textContent='Entrez votre e-mail et votre mot de passe.';return;}
+  if(err)err.textContent='Connexion…';
+  try{
+    await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    const cred=await firebase.auth().signInWithEmailAndPassword(email,pass);
+    if(!cred||!cred.user) throw new Error('Connexion Firebase impossible.');
+    // onAuthStateChanged lance automatiquement la vérification du rôle Patron
+    if(err)err.textContent='';
+  }catch(e){
+    console.log('Login Patron:',e);
+    if(err)err.textContent=(e&&e.message&&e.message.includes('autorisé'))?e.message:'E-mail ou mot de passe incorrect.';
+  }
 }
 
-// AUTH
-function doLogin(){
-  const u=document.getElementById('lu').value.trim();
-  const p=document.getElementById('lp').value;
-  const patron=DB.get('patron');
-  if(patron&&u===patron.id&&p===patron.pass){
-    loggedIn=true;
-    document.getElementById('lerr').textContent='';
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').style.display='flex';
-    initApp();
-  } else document.getElementById('lerr').textContent='Identifiants incorrects.';
-}
-function resetRoomKey(){
-  const cfg=DB.get('config');
-  const currentName=(cfg&&cfg.businessName)||'cette salle';
-  if(!confirm('⚠️ Cet appareil est actuellement configuré pour : "'+currentName+'"\n\nRéinitialiser effacera ce lien et permettra de configurer une NOUVELLE salle (nom + clé + identifiant + mot de passe).\n\nÀ utiliser uniquement avant de remettre l\'app à un nouveau client. Continuer ?'))return;
-  localStorage.removeItem('gz_room_key');
-  location.reload();
-}
-function doLogout(){
+async function doLogout(){
   loggedIn=false;
-  document.getElementById('login-screen').style.display='flex';
+  patronBootStarted=false;
+  if(fbRoot){try{fbRoot.off();}catch(e){}}
+  fbRoot=null;
+  DB._cache={};DB._ready=false;DB._readyCbs=[];
+  try{await firebase.auth().signOut();}catch(e){}
   document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
   document.getElementById('lp').value='';
 }
 document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
@@ -1077,13 +1131,15 @@ function savePoste(){
   if(!num||!type){showToast('⚠️ Nom et type obligatoires');return;}
   const postes=DB.get('postes')||[];
   const idx=parseInt(document.getElementById('p-edit-idx').value);
+  const old=(idx>=0&&postes[idx])?postes[idx]:{};
   const obj={
+    ...old,
     num,type,
-    ip:document.getElementById('p-ip').value.trim(),
     devid:document.getElementById('p-devid').value.trim(),
-    key:document.getElementById('p-key').value.trim(),
-    ver:document.getElementById('p-ver').value,
+    ip:'',
+    ver:'3.3'
   };
+  delete obj.key;
   if(idx>=0){postes[idx]=obj;showToast('✅ Poste modifié');}
   else{postes.push(obj);showToast('✅ Poste ajouté');}
   DB.set('postes',postes);
@@ -1096,24 +1152,16 @@ function delPoste(i){
   renderPostes();renderHome();showToast('Poste supprimé');
 }
 
-// TEST PRISE
+// TEST WORKER SÉCURISÉ
 async function testerPrise(){
-  const ip=document.getElementById('p-ip').value.trim();
-  const devid=document.getElementById('p-devid').value.trim();
-  const key=document.getElementById('p-key').value.trim();
   const res=document.getElementById('test-result');
-  if(!ip||!devid||!key){res.className='test-result tr-err';res.style.display='block';res.textContent='⚠️ Remplissez IP, Device ID et Local Key';return;}
-  res.className='test-result';res.style.display='block';res.textContent='🔄 Test en cours...';
+  res.className='test-result';res.style.display='block';res.textContent='🔄 Vérification du Worker…';
   try{
-    // Test via proxy CORS local (ne fonctionne qu'en réseau local)
-    const ctrl=new AbortController();
-    setTimeout(()=>ctrl.abort(),3000);
-    await fetch(`http://${ip}:6668`,{signal:ctrl.signal,mode:'no-cors'});
-    res.className='test-result tr-ok';res.textContent='✅ Prise joignable sur le réseau local !';
-  }catch(e){
-    if(e.name==='AbortError'){res.className='test-result tr-err';res.textContent='❌ Prise non joignable. Vérifiez l\'IP et le Wi-Fi.';}
-    else{res.className='test-result tr-ok';res.textContent='✅ Prise détectée (réponse réseau reçue)';}
-  }
+    const r=await fetch(TUYA_WORKER_URL,{method:'GET'});
+    const d=await r.json();
+    if(r.ok&&d.success){res.className='test-result tr-ok';res.textContent='✅ Worker Tuya sécurisé opérationnel';}
+    else throw new Error('Worker indisponible');
+  }catch(e){res.className='test-result tr-err';res.textContent='❌ Worker Tuya indisponible. Vérifiez Internet.';}
 }
 
 // TARIFS
@@ -1193,7 +1241,7 @@ function renderGerants(){
 }
 function openModalGerant(idx=-1){
   document.getElementById('g-edit-idx').value=idx;
-  if(idx>=0){const g=(DB.get('gerants')||[])[idx];document.getElementById('mo-gerant-title').textContent='Modifier';document.getElementById('g-nom').value=g.nom;document.getElementById('g-id').value=g.id;document.getElementById('g-pass').value=g.pass;}
+  if(idx>=0){const g=(DB.get('gerants')||[])[idx];document.getElementById('mo-gerant-title').textContent='Modifier';document.getElementById('g-nom').value=g.nom;document.getElementById('g-id').value=g.id;document.getElementById('g-pass').value='';}
   else{document.getElementById('mo-gerant-title').textContent='Nouveau gérant';['g-nom','g-id','g-pass'].forEach(id=>document.getElementById(id).value='');}
   openModal('mo-gerant');setTimeout(()=>document.getElementById('g-nom').focus(),200);
 }
@@ -1201,12 +1249,11 @@ function editGerant(i){openModalGerant(i);}
 function saveGerant(){
   const nom=document.getElementById('g-nom').value.trim();
   const id=document.getElementById('g-id').value.trim();
-  const pass=document.getElementById('g-pass').value.trim();
-  if(!nom||!id||!pass){showToast('⚠️ Remplissez tous les champs');return;}
+  if(!nom||!id){showToast('⚠️ Remplissez le nom et l’identifiant');return;}
   const gerants=DB.get('gerants')||[];
   const idx=parseInt(document.getElementById('g-edit-idx').value);
-  if(idx>=0){gerants[idx]={nom,id,pass};showToast('✅ Gérant modifié');}
-  else{if(gerants.find(g=>g.id===id)){showToast('⚠️ Identifiant déjà utilisé');return;}gerants.push({nom,id,pass});showToast('✅ Gérant ajouté');}
+  if(idx>=0){gerants[idx]={nom,id};showToast('✅ Profil Gérant modifié');}
+  else{if(gerants.find(g=>g.id===id)){showToast('⚠️ Identifiant déjà utilisé');return;}gerants.push({nom,id});showToast('✅ Profil Gérant ajouté');}
   DB.set('gerants',gerants);closeModal('mo-gerant');renderGerants();renderHome();
 }
 function delGerant(i){
@@ -1215,22 +1262,10 @@ function delGerant(i){
 }
 
 // ══════════════════════════════════════
-// PARAMÈTRES — Compte Tuya (identifiants propres au client)
+// PARAMÈTRES — secrets Tuya conservés uniquement dans Cloudflare
 // ══════════════════════════════════════
-function renderParams(){
-  const cfg=DB.get('tuyaConfig')||{};
-  document.getElementById('pr-tuya-id').value=cfg.clientId||'';
-  document.getElementById('pr-tuya-secret').value=cfg.clientSecret||'';
-  document.getElementById('tuya-config-result').textContent='';
-}
-function saveTuyaConfig(){
-  const clientId=document.getElementById('pr-tuya-id').value.trim();
-  const clientSecret=document.getElementById('pr-tuya-secret').value.trim();
-  if(!clientId||!clientSecret){showToast('⚠️ Renseignez le Client ID et le Client Secret');return;}
-  DB.set('tuyaConfig',{clientId,clientSecret});
-  document.getElementById('tuya-config-result').textContent='✅ Identifiants Tuya enregistrés';
-  showToast('✅ Compte Tuya enregistré');
-}
+function renderParams(){}
+function saveTuyaConfig(){showToast('🔐 Secrets Tuya protégés dans Cloudflare');}
 
 // NAV
 function showPage(name,el){
@@ -1262,22 +1297,25 @@ tickClock();setInterval(tickClock,10000);
 setInterval(()=>{if(!loggedIn)return;const pg=document.getElementById('page-control');if(pg&&pg.classList.contains('active')){ownerRenderDashboard();ownerRenderJournal();}},5000);
 
 // ══════════════════════════════════════
-// DÉMARRAGE — connexion à la salle (isolation par propriétaire)
+// DÉMARRAGE SÉCURISÉ — Firebase Authentication
 // ══════════════════════════════════════
-const savedTenantKey=localStorage.getItem('gz_room_key');
-currentTenantKey=savedTenantKey||null;
-if(savedTenantKey){
-  connectTenant(savedTenantKey);
-  DB.onReady(function(){
+currentTenantKey=ROOM_KEY;
+localStorage.setItem('gz_room_key',ROOM_KEY);
+document.getElementById('setup-screen').style.display='none';
+document.getElementById('reconnect-screen').style.display='none';
+document.getElementById('app').style.display='none';
+
+firebase.auth().onAuthStateChanged(async function(user){
+  if(user){
+    if(!patronBootStarted) await startSecurePatron(user);
+  }else{
+    loggedIn=false;
+    patronBootStarted=false;
     document.getElementById('fb-loading').style.display='none';
-    boot();
-    DB.onChange(refreshFromRemote);
-  });
-} else {
-  // Nouvelle installation : pas encore de salle liée à cet appareil
-  document.getElementById('fb-loading').style.display='none';
-  document.getElementById('setup-screen').style.display='flex';
-}
+    document.getElementById('app').style.display='none';
+    document.getElementById('login-screen').style.display='flex';
+  }
+});
 </script>
 
 <script>
