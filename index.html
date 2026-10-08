@@ -182,6 +182,21 @@ button,.ni,.ctl-btn{touch-action:manipulation}
 .gym-opt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.gym-opt{padding:9px 6px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:10px;font-weight:700;cursor:pointer}.gym-opt.sel{border-color:#22c55e;background:rgba(34,197,94,.10);color:#86efac}.gym-opt small{display:block;font-size:9px;color:var(--muted);margin-top:2px}.gym-proof-box{padding:11px;border-radius:10px;border:1px dashed rgba(96,165,250,.45);background:rgba(59,130,246,.07);font-size:10px;color:var(--sub);line-height:1.45}.gym-proof-box b{color:#bfdbfe}.gym-proof-actions{display:flex;gap:7px;margin:9px 0}.gym-proof-actions button{flex:1;padding:9px;border-radius:8px;border:1px solid rgba(96,165,250,.35);background:rgba(59,130,246,.12);color:#bfdbfe;font-size:10px;font-weight:800}.gym-proof-name{font-size:9px;color:#a7f3d0;word-break:break-word}
 @media(max-width:360px){.gym-head b{font-size:13px}.gym-actions button{min-width:100%}}
 
+
+/* V37/V14 — caméra intégrée Android + iPhone */
+.gz-camera-overlay{position:fixed;inset:0;z-index:1000002;background:#090c17;display:flex;align-items:center;justify-content:center;padding:10px;color:#fff}
+.gz-camera-panel{width:min(100%,520px);max-height:96dvh;overflow-y:auto;background:#17162b;border:1px solid #42526f;border-radius:18px;padding:14px;box-shadow:0 15px 50px #0008}
+.gz-camera-title{font-size:16px;font-weight:800;margin:3px 0 12px;text-align:center}
+.gz-camera-video{display:block;width:100%;max-height:55dvh;aspect-ratio:3/4;object-fit:cover;background:#090909;border-radius:12px;transform:scaleX(-1)}
+.gz-camera-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.gz-camera-actions button{flex:1;min-width:43%;padding:14px 7px;border:0;border-radius:10px;background:#2563eb;color:white;font-weight:800;font-size:13px}
+.gz-camera-actions button.gz-rec{background:#dc2626}.gz-camera-actions button.gz-stop{background:#ea580c}
+.gz-camera-actions button.gz-quit{background:#374151}
+.gz-camera-status{text-align:center;margin-top:7px;min-height:22px;font-size:12px;color:#cbd5e1}
+.gz-camera-overlay video::-webkit-media-controls-start-playback-button{display:none}
+.gym-proof-preview{margin-top:6px;max-height:180px;max-width:100%;border-radius:8px;object-fit:contain;display:block}
+.gym-video-share{background:#137547!important;color:white!important}
+
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 </head>
@@ -1443,6 +1458,102 @@ if('serviceWorker' in navigator && (location.protocol==='https:' || location.hos
 </script>
 
 <script>
+/* Caméra native de GameZone : preuve créée lors de la séance, jamais depuis la galerie. */
+window.GZCameraProof=(function(){
+  let busy=false;
+  function errorText(e){
+    const n=e&&e.name||'';
+    if(n==='NotAllowedError'||n==='PermissionDeniedError')return 'Autorise la caméra dans les paramètres du navigateur et réessaie.';
+    if(n==='NotFoundError')return 'Aucune caméra disponible sur cet appareil.';
+    if(n==='NotReadableError')return 'La caméra est déjà utilisée par une autre application.';
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return 'Caméra web indisponible. Ouvre GameZone en HTTPS dans Safari ou Chrome.';
+    return (e&&e.message)||'Impossible de démarrer la caméra.';
+  }
+  function mimeForVideo(){
+    if(!window.MediaRecorder)return '';
+    const types=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp8,opus','video/webm'];
+    return types.find(t=>{try{return MediaRecorder.isTypeSupported(t);}catch(_){return false;}})||'';
+  }
+  function filename(kind,mime){return 'gamezone-gym-'+new Date().toISOString().replace(/[:.]/g,'-')+(kind==='photo'?'.jpg':/mp4/.test(mime)?'.mp4':'.webm');}
+  async function capture(kind){
+    if(busy)throw new Error('Une caméra est déjà ouverte.');
+    if(!['photo','video'].includes(kind))throw new Error('Type de capture invalide');
+    if(!navigator.mediaDevices||typeof navigator.mediaDevices.getUserMedia!=='function')throw new Error('La caméra n’est pas disponible. Ouvre cette page sur Chrome ou Safari avec HTTPS.');
+    busy=true;
+    let stream=null,rec=null,elapsed=null,limit=null,settled=false,recorded=[],seconds=0;
+    let resolveCapture,rejectCapture;
+    const promise=new Promise((resolve,reject)=>{resolveCapture=resolve;rejectCapture=reject;});
+    const panel=document.createElement('div');panel.className='gz-camera-overlay';
+    panel.innerHTML=`<div class="gz-camera-panel" role="dialog" aria-modal="true" aria-label="Caméra preuve gymnastique">
+      <div class="gz-camera-title">${kind==='photo'?'📷 PRENDRE UNE PHOTO':'🎥 FILMER UNE VIDÉO'} — GYM</div>
+      <video class="gz-camera-video" autoplay muted playsinline webkit-playsinline></video>
+      <div class="gz-camera-status" aria-live="polite">Ouverture de la caméra…</div>
+      <div class="gz-camera-actions"><button type="button" class="gz-camera-do">${kind==='photo'?'📸 CAPTURER':'🔴 ENREGISTRER'}</button><button type="button" class="gz-camera-finish" style="display:none">⏹ ARRÊTER</button><button type="button" class="gz-quit">✕ ANNULER</button></div>
+      <div class="gz-camera-status">${kind==='photo'?'Cadre la photo, puis appuie sur CAPTURER.':'Enregistrement vidéo de 5 à 30 secondes maximum.'}</div>
+    </div>`;
+    const v=panel.querySelector('video'),status=panel.querySelector('.gz-camera-status'),go=panel.querySelector('.gz-camera-do'),stop=panel.querySelector('.gz-camera-finish');
+    function cleanup(){clearInterval(elapsed);clearTimeout(limit);if(stream){stream.getTracks().forEach(t=>{try{t.stop();}catch(_){}});stream=null;}v.srcObject=null;panel.remove();busy=false;}
+    function done(file,err){if(settled)return;settled=true;cleanup();if(err)rejectCapture(err);else resolveCapture(file);}
+    panel.querySelector('.gz-quit').addEventListener('click',()=>{if(rec&&rec.state==='recording'){try{rec.onstop=null;rec.stop();}catch(_){}}done(null,new Error('Capture annulée'));});
+    document.body.appendChild(panel);
+    go.disabled=true;
+    try{
+      try{stream=await navigator.mediaDevices.getUserMedia({audio:kind==='video',video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});}
+      catch(err){if(kind!=='video'||!['NotAllowedError','NotFoundError','OverconstrainedError'].includes(err.name))throw err;
+        stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});}
+      if(settled){stream.getTracks().forEach(t=>t.stop());return promise;}
+      v.srcObject=stream;
+      try{await v.play();}catch(_){/* autoplay parfois bloqué, flux présent quand même */}
+      if(kind==='video'&&!window.MediaRecorder)throw new Error('Enregistrement vidéo impossible sur ce navigateur. Mets Safari ou Chrome à jour.');
+      status.textContent=kind==='photo'?'✅ Caméra ouverte — photo en direct':'✅ Caméra ouverte — prêt à filmer';
+      go.disabled=false;
+      go.addEventListener('click',()=>{
+        if(kind==='photo'){
+          if(!v.videoWidth||!v.videoHeight){status.textContent='Attends que l’image apparaisse…';return;}
+          go.disabled=true;
+          try{
+            const c=document.createElement('canvas'),scale=Math.min(1,1200/Math.max(v.videoWidth,v.videoHeight));
+            c.width=Math.max(1,Math.round(v.videoWidth*scale));c.height=Math.max(1,Math.round(v.videoHeight*scale));
+            c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+            c.toBlob(blob=>{if(!blob||blob.size<200)done(null,new Error('Photo vide, réessaie'));else done(new File([blob],filename('photo','image/jpeg'),{type:'image/jpeg'}));},'image/jpeg',0.83);
+          }catch(e){done(null,e);}
+          return;
+        }
+        try{
+          const mime=mimeForVideo();rec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+          recorded=[];seconds=0;
+          rec.ondataavailable=e=>{if(e.data&&e.data.size)recorded.push(e.data);};
+          rec.onerror=()=>done(null,new Error('Enregistrement vidéo interrompu'));
+          rec.onstop=()=>{
+            if(settled)return;
+            const type=rec.mimeType||(recorded[0]&&recorded[0].type)||'video/mp4';
+            const blob=new Blob(recorded,{type});
+            if(blob.size<1000||seconds<4)done(null,new Error('Vidéo trop courte. Filme quelques secondes.'));
+            else done(new File([blob],filename('video',type),{type}));
+          };
+          rec.start(1000);go.style.display='none';stop.style.display='block';stop.classList.add('gz-stop');
+          status.textContent='🔴 Enregistrement… 0 s / 30 s';
+          elapsed=setInterval(()=>{seconds++;status.textContent='🔴 Enregistrement… '+seconds+' s / 30 s';},1000);
+          limit=setTimeout(()=>{if(rec&&rec.state==='recording')rec.stop();},30000);
+        }catch(e){done(null,e);}
+      });
+      stop.addEventListener('click',()=>{if(rec&&rec.state==='recording'){if(seconds<5){status.textContent='Filme au moins 5 secondes.';return;}rec.stop();stop.disabled=true;status.textContent='Préparation de la vidéo…';}});
+    }catch(e){done(null,new Error(errorText(e)));}
+    return promise;
+  }
+  async function share(file){
+    if(!file||!String(file.type||'').startsWith('video/'))throw new Error('Enregistre une vidéo avant de la partager.');
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await navigator.share({files:[file],title:'Preuve vidéo Gymnastique'});return 'share';}
+      catch(e){if(e.name==='AbortError')return 'cancel';}
+    }
+    const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name||'gym-preuve.mp4';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);return 'download';
+  }
+  return {capture,share};
+})();
+</script>
+
+<script>
 /* GameZone gratuit : petites photos dans Realtime Database, vidéos sous forme de lien Drive. */
 window.GymProofFree=(function(){
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -1550,16 +1661,40 @@ window.GymProofFree=(function(){
     if(gymProofModeP==='video')return GymProofFree.videoProof(document.getElementById('gym-drive-url-p').value);
     return GymProofFree.photoPut(file,currentTenantKey,sid,await GZ_GYM_GET_TOKEN(),firebaseConfig.databaseURL);
   }
-  window.gymVideoModeP=function(){gymProofModeP='video';gymProofP=null;document.getElementById('gym-drive-zone-p').style.display='block';document.getElementById('gym-proof-name-p').textContent='🎥 Colle le lien de la vidéo déjà envoyée sur Drive';};
-  function ensureGymModalP(){if(document.getElementById('mo-gym-p'))return;const m=document.createElement('div');m.className='mo';m.id='mo-gym-p';m.innerHTML=`<div class="ms"><div class="mh"></div><div class="mt" style="color:#22c55e">🏃 CASE 8 — GYMNASTIQUE</div><div class="ig"><label>Nom du client</label><input id="gym-client-p" type="text" placeholder="Nom du client" autocomplete="off"></div><div class="ig"><label>Mouvement</label><div id="gym-moves-p" class="gym-opt-grid"></div></div><div class="ig"><label>Durée</label><div id="gym-time-p" class="gym-opt-grid"></div></div><div class="ig"><label>Paiement</label><div id="gym-pay-p" class="gym-opt-grid"></div></div><div class="gym-proof-box"><b>📸 Preuve obligatoire avant validation</b><div>PHOTO : enregistrée automatiquement en petit JPEG dans Firebase gratuit. VIDÉO : téléverse-la dans Google Drive, puis colle son lien.</div><div class="gym-proof-actions"><button type="button" onclick="document.getElementById('gym-photo-p').click()">📷 PHOTO</button><button type="button" onclick="gymVideoModeP()">🎥 VIDÉO DRIVE</button></div><input hidden id="gym-photo-p" type="file" accept="image/*" capture="environment"><div id="gym-drive-zone-p" style="display:none"><a href="https://drive.google.com/drive/my-drive" target="_blank" rel="noopener" style="color:#93c5fd">Ouvrir Google Drive pour déposer la vidéo</a><div style="margin:6px 0">Partage la vidéo seulement avec le patron et le gérant, puis colle le lien ici.</div><input type="url" id="gym-drive-url-p" style="width:100%;border-radius:7px;padding:10px;background:#1e293b;color:white" placeholder="https://drive.google.com/file/d/..."></div><div id="gym-proof-name-p" class="gym-proof-name">Aucune preuve capturée</div></div><div class="ma"><button class="btn-cancel" onclick="closeModal('mo-gym-p')">Retour</button><button class="btn-ok" onclick="gymConfirmStartP()">ACTIVER ✓</button></div></div>`;document.body.appendChild(m);document.getElementById('gym-photo-p').addEventListener('change',e=>{gymProofModeP='photo';document.getElementById('gym-drive-zone-p').style.display='none';gymProofP=e.target.files&&e.target.files[0]||null;document.getElementById('gym-proof-name-p').textContent=gymProofP?'✅ '+gymProofP.name:'Aucune preuve capturée';});}
-  function fillGymP(){ensureGymModalP();document.getElementById('gym-client-p').value='';gymMinP=30;gymPayP='especes';gymMoveP=GYM_MOVES[0];gymProofP=null;gymProofModeP='photo';document.getElementById('gym-drive-zone-p').style.display='none';document.getElementById('gym-drive-url-p').value='';document.getElementById('gym-photo-p').value='';document.getElementById('gym-proof-name-p').textContent='Aucune preuve capturée';document.getElementById('gym-moves-p').innerHTML=GYM_MOVES.map((x,i)=>`<button type="button" class="gym-opt ${i===0?'sel':''}" onclick="gymSelectMoveP(this)" data-v="${escp(x)}">${escp(x)}</button>`).join('');document.getElementById('gym-time-p').innerHTML=GYM_TARIFFS.map((x,i)=>`<button type="button" class="gym-opt ${i===0?'sel':''}" onclick="gymSelectTimeP(${x.min},this)">${x.lbl}<small>${x.prix} F</small></button>`).join('');document.getElementById('gym-pay-p').innerHTML=OWNER_PAYS.map((x,i)=>`<button type="button" class="gym-opt ${i===0?'sel':''}" onclick="gymSelectPayP('${x.id}',this)">${x.emoji} ${x.lbl}</button>`).join('');}
+    // La galerie n'est jamais proposée par l'application : caméra web dans la page.
+  async function gymCaptureP(kind){
+    try{
+      const file=await GZCameraProof.capture(kind);
+      if(!file)return;
+      gymProofP=file;
+      gymProofModeP=kind;
+      const zone=document.getElementById('gym-drive-zone-p');
+      zone.style.display=kind==='video'?'block':'none';
+      document.getElementById('gym-drive-url-p').value='';
+      document.getElementById('gym-proof-name-p').textContent=kind==='photo'?'✅ Photo prise maintenant avec la caméra':'✅ Vidéo filmée maintenant ('+Math.ceil(file.size/1024)+' Ko). Partage-la sur Google Drive, puis colle son lien.';
+      const pv=document.getElementById('gym-capture-preview-p');
+      if(pv.dataset.blobUrl){URL.revokeObjectURL(pv.dataset.blobUrl);delete pv.dataset.blobUrl;}
+      const u=URL.createObjectURL(file);pv.dataset.blobUrl=u;pv.style.display='block';
+      pv.innerHTML=kind==='photo'?'<img class="gym-proof-preview" alt="Photo prise maintenant">':'<video class="gym-proof-preview" controls playsinline preload="metadata"></video>';
+      pv.firstElementChild.src=u;
+      showToast('✅ '+(kind==='photo'?'Photo capturée':'Vidéo capturée'));
+    }catch(e){if(e.message!=='Capture annulée')showToast('⚠️ '+e.message);}
+  }
+  window.gymCapturePhotoP=()=>gymCaptureP('photo');
+  window.gymCaptureVideoP=()=>gymCaptureP('video');
+  window.gymShareVideoP=async function(){
+    if(gymProofModeP!=='video'||!gymProofP)return showToast('🎥 Filme une vidéo d’abord');
+    try{const result=await GZCameraProof.share(gymProofP);if(result==='share')showToast('✅ Si la vidéo est sur Drive, colle son lien avant ACTIVER');if(result==='download')showToast('✅ Vidéo enregistrée : importe-la dans Drive, puis colle son lien');}catch(e){showToast('⚠️ '+e.message);}
+  };
+  function ensureGymModalP(){if(document.getElementById('mo-gym-p'))return;const m=document.createElement('div');m.className='mo';m.id='mo-gym-p';m.innerHTML=`<div class="ms"><div class="mh"></div><div class="mt" style="color:#22c55e">🏃 CASE 8 — GYMNASTIQUE</div><div class="ig"><label>Nom du client</label><input id="gym-client-p" type="text" placeholder="Nom du client" autocomplete="off"></div><div class="ig"><label>Mouvement</label><div id="gym-moves-p" class="gym-opt-grid"></div></div><div class="ig"><label>Durée</label><div id="gym-time-p" class="gym-opt-grid"></div></div><div class="ig"><label>Paiement</label><div id="gym-pay-p" class="gym-opt-grid"></div></div><div class="gym-proof-box"><b>📸 Preuve obligatoire avant validation</b><div>Photo ou vidéo FILMÉE MAINTENANT obligatoire. PHOTO : sauvegardée en petit JPEG dans Firebase. VIDÉO : filmer ici, puis partager vers Google Drive et coller le lien.</div><div class="gym-proof-actions"><button type="button" onclick="gymCapturePhotoP()">📸 PRENDRE PHOTO</button><button type="button" onclick="gymCaptureVideoP()">🎥 FILMER VIDÉO</button></div><div id="gym-capture-preview-p" style="display:none"></div><div id="gym-drive-zone-p" style="display:none"><button type="button" class="gym-video-share" onclick="gymShareVideoP()" style="display:block;width:100%;padding:10px;border:0;border-radius:8px;margin:6px 0">📤 PARTAGER / ENREGISTRER MA VIDÉO</button><a href="https://drive.google.com/drive/my-drive" target="_blank" rel="noopener" style="color:#93c5fd">Ouvrir Google Drive pour déposer la vidéo</a><div style="margin:6px 0">Partage la vidéo seulement avec le patron et le gérant, puis colle le lien ici.</div><input type="url" id="gym-drive-url-p" style="width:100%;border-radius:7px;padding:10px;background:#1e293b;color:white" placeholder="https://drive.google.com/file/d/..."></div><div id="gym-proof-name-p" class="gym-proof-name">Aucune preuve capturée</div></div><div class="ma"><button class="btn-cancel" onclick="closeModal('mo-gym-p')">Retour</button><button class="btn-ok" onclick="gymConfirmStartP()">ACTIVER ✓</button></div></div>`;document.body.appendChild(m);}
+  function fillGymP(){ensureGymModalP();document.getElementById('gym-client-p').value='';gymMinP=30;gymPayP='especes';gymMoveP=GYM_MOVES[0];gymProofP=null;gymProofModeP='photo';document.getElementById('gym-drive-zone-p').style.display='none';document.getElementById('gym-drive-url-p').value='';{const pv=document.getElementById('gym-capture-preview-p');if(pv.dataset.blobUrl){URL.revokeObjectURL(pv.dataset.blobUrl);delete pv.dataset.blobUrl;}pv.innerHTML='';pv.style.display='none';}document.getElementById('gym-proof-name-p').textContent='Aucune preuve capturée';document.getElementById('gym-moves-p').innerHTML=GYM_MOVES.map((x,i)=>`<button type="button" class="gym-opt ${i===0?'sel':''}" onclick="gymSelectMoveP(this)" data-v="${escp(x)}">${escp(x)}</button>`).join('');document.getElementById('gym-time-p').innerHTML=GYM_TARIFFS.map((x,i)=>`<button type="button" class="gym-opt ${i===0?'sel':''}" onclick="gymSelectTimeP(${x.min},this)">${x.lbl}<small>${x.prix} F</small></button>`).join('');document.getElementById('gym-pay-p').innerHTML=OWNER_PAYS.map((x,i)=>`<button type="button" class="gym-opt ${i===0?'sel':''}" onclick="gymSelectPayP('${x.id}',this)">${x.emoji} ${x.lbl}</button>`).join('');}
 
   window.gymSelectMoveP=function(el){gymMoveP=el.dataset.v||GYM_MOVES[0];document.querySelectorAll('#gym-moves-p .gym-opt').forEach(z=>z.classList.remove('sel'));el.classList.add('sel');};
   window.gymSelectTimeP=function(min,el){gymMinP=Math.max(1,Number(min)||30);document.querySelectorAll('#gym-time-p .gym-opt').forEach(z=>z.classList.remove('sel'));el.classList.add('sel');};
   window.gymSelectPayP=function(id,el){gymPayP=id||'especes';document.querySelectorAll('#gym-pay-p .gym-opt').forEach(z=>z.classList.remove('sel'));el.classList.add('sel');};
 
   window.gymOpenP=function(){if(gp().actif)return;fillGymP();openModal('mo-gym-p');};
-  window.gymConfirmStartP=async function(){const nom=(document.getElementById('gym-client-p').value||'').trim();if(!nom)return showToast('⚠️ Entrez le nom du client');if(gymProofModeP==='photo'&&!gymProofP)return showToast('📸 Photo obligatoire ou sélectionne vidéo Drive');const tar=gpTar(gymMinP);if(!tar)return;const now=Date.now(),sid='GYM-'+now+'-pat';showToast('⏳ Envoi de la preuve...');try{const proof=await uploadGymProofP(gymProofP,sid);const st={actif:true,client:nom,mouvement:gymMoveP,finTs:now+gymMinP*60000,tempsTotal:gymMinP*60,dureeMin:gymMinP,paused:false,pauseRemainingSec:0,montantSession:tar.prix,paiement:gymPayP,sessionId:sid,startedAt:now,updatedAt:now,preuveUrl:proof.url,preuvePath:proof.path,preuveKind:proof.kind,preuveType:proof.type,preuveNom:proof.name};const tx=await fbRoot.transaction(root=>{root=root||{};if(root.gym&&root.gym.actif)return undefined;root.gym=st;const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+tar.prix;ss.parPoste['Gymnastique']=money(ss.parPoste['Gymnastique'])+tar.prix;ss.sessionsParPoste['Gymnastique']=Math.max(0,Number(ss.sessionsParPoste['Gymnastique'])||0)+1;ss.payStats[gymPayP]=money(ss.payStats[gymPayP])+tar.prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!tx||!tx.committed)return showToast('⚠️ Gym déjà occupé');if(tx.snapshot&&typeof tx.snapshot.val==='function')DB._cache=tx.snapshot.val()||DB._cache;ownerPersistActivity('🏃 Gymnastique — Session démarrée',nom+' · '+gymMoveP+' · '+gymMinP+' min · preuve photo/vidéo enregistrée',tar.prix+' F',{poste:'Gymnastique',client:nom,sessionId:sid,typeActivite:'gym_demarrage',mouvement:gymMoveP,dureeSec:gymMinP*60,montant:tar.prix,preuveUrl:proof.url,preuvePath:proof.path,preuveKind:proof.kind,preuveSalle:currentTenantKey,preuveType:proof.type,heureDebut:now,heureFinPrevue:now+gymMinP*60000});closeModal('mo-gym-p');showToast('✅ Gym '+gymMinP+' min activé');renderControl();ownerRenderReport();}catch(e){console.log(e);showToast('⚠️ '+(e.message||'Activation gym impossible'));}};
+  window.gymConfirmStartP=async function(){const nom=(document.getElementById('gym-client-p').value||'').trim();if(!nom)return showToast('⚠️ Entrez le nom du client');if(!gymProofP)return showToast('📸 Prends une photo ou filme une vidéo avec la caméra avant ACTIVER');if(gymProofModeP==='video'&&!document.getElementById('gym-drive-url-p').value.trim())return showToast('🎥 Colle le lien Drive de la vidéo que tu viens de filmer');const tar=gpTar(gymMinP);if(!tar)return;const now=Date.now(),sid='GYM-'+now+'-pat';showToast('⏳ Envoi de la preuve...');try{const proof=await uploadGymProofP(gymProofP,sid);const st={actif:true,client:nom,mouvement:gymMoveP,finTs:now+gymMinP*60000,tempsTotal:gymMinP*60,dureeMin:gymMinP,paused:false,pauseRemainingSec:0,montantSession:tar.prix,paiement:gymPayP,sessionId:sid,startedAt:now,updatedAt:now,preuveUrl:proof.url,preuvePath:proof.path,preuveKind:proof.kind,preuveType:proof.type,preuveNom:proof.name};const tx=await fbRoot.transaction(root=>{root=root||{};if(root.gym&&root.gym.actif)return undefined;root.gym=st;const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+tar.prix;ss.parPoste['Gymnastique']=money(ss.parPoste['Gymnastique'])+tar.prix;ss.sessionsParPoste['Gymnastique']=Math.max(0,Number(ss.sessionsParPoste['Gymnastique'])||0)+1;ss.payStats[gymPayP]=money(ss.payStats[gymPayP])+tar.prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!tx||!tx.committed)return showToast('⚠️ Gym déjà occupé');if(tx.snapshot&&typeof tx.snapshot.val==='function')DB._cache=tx.snapshot.val()||DB._cache;ownerPersistActivity('🏃 Gymnastique — Session démarrée',nom+' · '+gymMoveP+' · '+gymMinP+' min · preuve photo/vidéo enregistrée',tar.prix+' F',{poste:'Gymnastique',client:nom,sessionId:sid,typeActivite:'gym_demarrage',mouvement:gymMoveP,dureeSec:gymMinP*60,montant:tar.prix,preuveUrl:proof.url,preuvePath:proof.path,preuveKind:proof.kind,preuveSalle:currentTenantKey,preuveType:proof.type,heureDebut:now,heureFinPrevue:now+gymMinP*60000});closeModal('mo-gym-p');showToast('✅ Gym '+gymMinP+' min activé');renderControl();ownerRenderReport();}catch(e){console.log(e);showToast('⚠️ '+(e.message||'Activation gym impossible'));}};
   window.gymPauseP=async function(){const g=gp();if(!g.actif||g.paused)return;const rest=gpRest(g);try{const tx=await fbRoot.transaction(root=>{root=root||{};if(!root.gym||!root.gym.actif)return undefined;root.gym=Object.assign({},root.gym,{paused:true,pauseRemainingSec:rest,finTs:0,updatedAt:Date.now()});return root;},undefined,false);if(tx&&tx.committed){if(tx.snapshot&&typeof tx.snapshot.val==='function')DB._cache=tx.snapshot.val()||DB._cache;ownerPersistActivity('🏃 Gymnastique — Pause',(g.client||'Client')+' · '+gpFmt(rest)+' restantes','',{poste:'Gymnastique',sessionId:g.sessionId||'',typeActivite:'gym_pause'});renderControl();}}catch(e){showToast('⚠️ Pause gym impossible');}};
   window.gymResumeP=async function(){const g=gp();if(!g.actif||!g.paused)return;const rest=Math.max(1,Number(g.pauseRemainingSec)||0);try{const tx=await fbRoot.transaction(root=>{root=root||{};if(!root.gym||!root.gym.actif||!root.gym.paused)return undefined;root.gym=Object.assign({},root.gym,{paused:false,pauseRemainingSec:0,finTs:Date.now()+rest*1000,updatedAt:Date.now()});return root;},undefined,false);if(tx&&tx.committed){if(tx.snapshot&&typeof tx.snapshot.val==='function')DB._cache=tx.snapshot.val()||DB._cache;ownerPersistActivity('🏃 Gymnastique — Reprise',g.client||'Client','',{poste:'Gymnastique',sessionId:g.sessionId||'',typeActivite:'gym_reprise'});renderControl();}}catch(e){showToast('⚠️ Reprise gym impossible');}};
   window.gymPlusP=async function(min){const g=gp();if(!g.actif)return;const tar=gpTar(min);if(!tar)return;try{const tx=await fbRoot.transaction(root=>{root=root||{};const x=root.gym||{};if(!x.actif)return undefined;const u=Object.assign({},x);if(u.paused)u.pauseRemainingSec=(Number(u.pauseRemainingSec)||0)+min*60;else u.finTs=(Number(u.finTs)||Date.now())+min*60000;u.tempsTotal=(Number(u.tempsTotal)||0)+min*60;u.montantSession=money(u.montantSession)+tar.prix;u.updatedAt=Date.now();root.gym=u;const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+tar.prix;ss.parPoste['Gymnastique']=money(ss.parPoste['Gymnastique'])+tar.prix;ss.payStats[g.paiement||'especes']=money(ss.payStats[g.paiement||'especes'])+tar.prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(tx&&tx.committed){if(tx.snapshot&&typeof tx.snapshot.val==='function')DB._cache=tx.snapshot.val()||DB._cache;ownerPersistActivity('🏃 Gymnastique — Temps ajouté',(g.client||'Client')+' · +'+min+' min',tar.prix+' F',{poste:'Gymnastique',sessionId:g.sessionId||'',typeActivite:'gym_prolongation',montant:tar.prix});showToast('✅ +'+min+' min Gym');renderControl();ownerRenderReport();}}catch(e){showToast('⚠️ Ajout temps Gym impossible');}};
