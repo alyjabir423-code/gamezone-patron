@@ -1,4 +1,4 @@
-const CACHE='gamezone-patron-v14-gym-camera-directe';
+const CACHE='gamezone-patron-v15-gym-recettes-annulation';
 const ASSETS=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
