@@ -1,4 +1,4 @@
-const CACHE='gamezone-patron-v15-gym-recettes-annulation';
+const CACHE='gamezone-patron-v16-antipause-jaune';
 const ASSETS=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
