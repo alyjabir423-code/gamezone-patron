@@ -1,5 +1,5 @@
 // Historique prive Patron / partage Gerant — version 27
-const CACHE='gz-patron-V30-firebase-sec-20261009';
+const CACHE='gamezone-33-bonus-affichage-20261009';
 const ASSETS=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
