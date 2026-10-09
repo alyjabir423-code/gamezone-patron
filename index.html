@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="GZ Patron">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.webmanifest">
-<title>GameZone Patron V28 — Corrections privées</title>
+<title>GameZone Patron V29 — Historiques et recettes protégés</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap');
 :root{--bg:#0a0f1e;--surface:#0f1628;--card:#162040;--border:#1e2d52;--gold:#f59e0b;--gl:#fcd34d;--green:#10b981;--red:#ef4444;--blue:#6366f1;--purple:#8b5cf6;--text:#f0f4ff;--muted:#64748b;--sub:#94a3b8;--fd:'Rajdhani',sans-serif;--fb:'Inter',sans-serif;--r:14px;--rs:9px}
@@ -660,13 +660,22 @@ const DB={
 
 // V29 / Firebase V38 : refus des ecritures de salle entiere.
 // Les modifications sont adressees aux enfants autorises seulement.
+function gzIsFinancialCounterPath(path){
+  const bits=String(path||'').split('/');
+  const off=bits[0]==='daily' ? 2 : 1;
+  if(bits[0]!=='sessions' && bits[0]!=='daily')return false;
+  if(bits.length===off+1 && (bits[off]==='recettes'||bits[off]==='count'))return true;
+  if(bits.length===off+2 && ['parPoste','sessionsParPoste','payStats'].includes(bits[off]))return true;
+  return false;
+}
+
 function GZScopedRoomRef(rawRef){
   function clone(o){return o==null?o:JSON.parse(JSON.stringify(o));}
   function eq(a,b){return JSON.stringify(a)===JSON.stringify(b);}
   function snapshot(value){return {val:function(){return clone(value);}};}
   function delta(p,a,b,changes){
     if(eq(a,b))return;
-    if(typeof a==='number'&&Number.isFinite(a)&&typeof b==='number'&&Number.isFinite(b)){
+    if(gzIsFinancialCounterPath(p)&&typeof a==='number'&&Number.isFinite(a)&&typeof b==='number'&&Number.isFinite(b)){
       const n=b-a;
       if(n) changes[p]=firebase.database.ServerValue.increment(n);
       return;
@@ -722,6 +731,11 @@ function GZScopedRoomRef(rawRef){
           if(!eq(v,original.active_by_poste[k])&&!eq(serverMap[k]||null,original.active_by_poste[k]||null))
             throw Error('Poste modifie sur un autre appareil. Actualise avant de continuer.');
         }
+      }
+      if(!newDay && Object.keys(patch).some(k=>k==='sessions' || k.startsWith('sessions/') || k.startsWith('daily/'))){
+        const freshSessions=(await rawRef.child('sessions').once('value')).val()||{};
+        if(String(freshSessions.date||'')!==String(original.sessions?.date||''))
+          throw Error('Journée modifiée sur un autre appareil. Recharger avant la vente.');
       }
       await rawRef.update(patch); // Ecriture atomique multipath, pas de .write globale.
       return {committed:true,snapshot:snapshot(next)};

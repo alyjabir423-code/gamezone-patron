@@ -6,5 +6,5 @@
   "display": "standalone",
   "background_color": "#0d0d1a",
   "theme_color": "#0d0d1a",
-  "description": "GameZone patron V27 : séparations des corrections de recette et des historiques, sans toucher aux prises Tuya."
+  "description": "Gestion GameZone Patron V29 — synchro Firebase par rôles, sauvegarde des recettes."
 }
