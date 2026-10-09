@@ -1,4 +1,5 @@
-const CACHE='gz46-gamezone-gerant-v45-sync-tuya-verifiee';
+// Historique prive Patron / partage Gerant — version 27
+const CACHE='gz-patron-historique-v27';
 const ASSETS=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
