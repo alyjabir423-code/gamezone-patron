@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="GZ Patron">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.webmanifest">
-<title>GameZone CI — Patron V17 Gym Recettes + Annulation</title>
+<title>GameZone CI — Patron V21 Synchronisation TV vérifiée</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap');
 :root{--bg:#0a0f1e;--surface:#0f1628;--card:#162040;--border:#1e2d52;--gold:#f59e0b;--gl:#fcd34d;--green:#10b981;--red:#ef4444;--blue:#6366f1;--purple:#8b5cf6;--text:#f0f4ff;--muted:#64748b;--sub:#94a3b8;--fd:'Rajdhani',sans-serif;--fb:'Inter',sans-serif;--r:14px;--rs:9px}
@@ -717,7 +717,7 @@ function rootWriteActive(root,poste,idx,state){
   root.active_by_poste=(root.active_by_poste&&typeof root.active_by_poste==='object')?Object.assign({},root.active_by_poste):{};
   root.active_by_poste[remotePostKey(poste&&poste.num)]=deepClone(st);return st;
 }
-function blankRemoteActive(base){return Object.assign({},base||{},{actif:false,client:'',finTs:0,tempsTotal:0,dureeMin:0,paused:false,pauseRemainingSec:0,montantSession:0,montantJourSession:0,paiementsSession:{},sessionId:'',startedAt:0,bonus:false,bonusOnly:false,bonusSource:'',bonusDurationMin:0,bonusMinutesAdded:0,bonusGrantedAt:0,updatedAt:Date.now()});}
+function blankRemoteActive(base){return Object.assign({},base||{},{actif:false,starting:false,startingUntil:0,cleanup:false,cleanupUntil:0,client:'',finTs:0,tempsTotal:0,dureeMin:0,paused:false,pauseRemainingSec:0,montantSession:0,montantJourSession:0,paiementsSession:{},sessionId:'',startedAt:0,bonus:false,bonusOnly:false,bonusSource:'',bonusDurationMin:0,bonusMinutesAdded:0,bonusGrantedAt:0,updatedAt:Date.now()});}
 function businessDate(d=new Date()){return new Date(d.getTime()-(7*60*60*1000));}
 function businessDateKey(d=new Date()){return dateKeyISO(businessDate(d));}
 function remainingActive(a){if(!a||!a.actif)return 0;if(a.paused)return Math.max(0,Math.floor(Number(a.pauseRemainingSec)||0));return Math.max(0,Math.ceil(((Number(a.finTs)||0)-Date.now())/1000));}
@@ -767,9 +767,28 @@ function ownerPersistActivity(main,detail,amount,meta={}){
   try{fbRoot.child('activity_daily').child(entry.dateKey).child(entry.id).set(entry);}catch(e){console.log('Historique patron:',e);}
 }
 
+
+// V21: une commande Tuya n'est validée que si switch_1 confirme le vrai état.
+async function ownerReadSwitch(poste){
+  if(!poste||!poste.devid||!currentTenantKey)return null;
+  const user=firebase.auth().currentUser;if(!user)return null;
+  const token=await user.getIdToken();
+  const r=await fetch(TUYA_WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+   body:JSON.stringify({tenantKey:currentTenantKey,action:'status',devid:poste.devid}),cache:'no-store'});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok||!d.success||!d.device)return null;
+  return d.device.online===true&&typeof d.device.switchOn==='boolean'?d.device.switchOn:null;
+}
+async function ownerVerifySwitch(poste,expected){
+  for(let i=0;i<5;i++){
+    if(i)await new Promise(r=>setTimeout(r,550));
+    try{if(await ownerReadSwitch(poste)===expected)return true;}catch(e){console.log('Etat Tuya:',e);}
+  }
+  return false;
+}
+
 async function ownerTuyaCommand(poste,turnOn){
   if(!poste||!poste.devid||!currentTenantKey)return false;
-  if(turnOn)ownerClearOff(poste); // protection de la nouvelle séance contre les anciens OFF en attente
   try{
     const user=firebase.auth().currentUser;
     if(!user) throw new Error('Session Firebase absente');
@@ -784,7 +803,9 @@ async function ownerTuyaCommand(poste,turnOn){
     });
     const d=await r.json();
     if(!r.ok||!d.success){console.log('Tuya patron refusé:',d);return false;}
-    return true;
+    const confirmed=await ownerVerifySwitch(poste,turnOn);
+    if(confirmed&&turnOn)ownerClearOff(poste);
+    return confirmed;
   }catch(e){console.log('Tuya patron:',e);return false;}
 }
 function ownerPendingKey(){return 'gz_patron_pending_off_'+String(currentTenantKey||'');}
@@ -797,7 +818,7 @@ async function ownerReliableOff(poste){
 }
 async function ownerRetryPendingOff(){
   if(!navigator.onLine)return;let q={};try{q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');}catch(e){}
-  for(const key of Object.keys(q)){const x=q[key];if(x&&x.devid){const posts=DB.get('postes')||[];const j=posts.findIndex(pp=>pp&&pp.devid===x.devid);const live=j>=0?activeForPoste(posts[j],j):null;if(live&&live.actif&&remainingActive(live)>0){delete q[key];continue;}const ok=await ownerTuyaCommand(x,false);if(ok){delete q[key];}}}
+  for(const key of Object.keys(q)){const x=q[key];if(x&&x.devid){const posts=DB.get('postes')||[];const j=posts.findIndex(pp=>pp&&pp.devid===x.devid);const live=j>=0?activeForPoste(posts[j],j):null;if(live&&((live.actif&&remainingActive(live)>0)||(live.starting&&Date.now()<Number(live.startingUntil||0)))){delete q[key];continue;}const ok=await ownerTuyaCommand(x,false);if(ok){delete q[key];}}}
   try{localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}
 }
 window.addEventListener('online',ownerRetryPendingOff);setInterval(ownerRetryPendingOff,7000);
@@ -878,16 +899,17 @@ async function ownerConfirmBonus(){
   const postes=DB.get('postes')||[],idx=Number(document.getElementById('owner-bonus-poste').value)||0,p=postes[idx];if(!p)return;
   const local=activeForPoste(p,idx)||{},min=Math.max(1,Number(ownerBonusMin)||30),now=Date.now();let nom=(document.getElementById('owner-bonus-client').value||'').trim();if(local.actif)nom=local.client||nom;if(!nom)return showToast('⚠️ Entrez le nom du client');
   try{
+    if(!local.actif&&p.devid){const on=await ownerTuyaCommand(p,true);if(!on)return showToast('⚠️ TV non confirmée : bonus NON activé');}
     let sid=local.sessionId||('bonus-'+String(p.num)+'-'+now),startedNew=!local.actif,finalTs=0;
     const res=await fbRoot.transaction(root=>{
       root=root||{};const r=rootReadActive(root,Object.assign({},p,local),idx)||{};
-      if(startedNew){if(r.actif)return;const st={actif:true,client:nom,finTs:now+min*60000,tempsTotal:min*60,dureeMin:min,paused:false,pauseRemainingSec:0,montantSession:0,montantJourSession:0,paiementsSession:{},sessionId:sid,startedAt:now,bonus:true,bonusOnly:true,bonusSource:'patron',bonusDurationMin:min,bonusMinutesAdded:min,bonusGrantedAt:now,updatedAt:now};rootWriteActive(root,p,idx,st);finalTs=st.finTs;}
+      if(startedNew){if(r.actif || (r.starting&&Date.now()<Number(r.startingUntil||0)))return;const st={actif:true,client:nom,finTs:now+min*60000,tempsTotal:min*60,dureeMin:min,paused:false,pauseRemainingSec:0,montantSession:0,montantJourSession:0,paiementsSession:{},sessionId:sid,startedAt:now,bonus:true,bonusOnly:true,bonusSource:'patron',bonusDurationMin:min,bonusMinutesAdded:min,bonusGrantedAt:now,updatedAt:now};rootWriteActive(root,p,idx,st);finalTs=st.finTs;}
       else{if(!r.actif||(local.sessionId&&r.sessionId&&r.sessionId!==local.sessionId))return;const u=Object.assign({},r);if(u.paused)u.pauseRemainingSec=(Number(u.pauseRemainingSec)||0)+min*60;else u.finTs=(Number(u.finTs)||Date.now())+min*60000;u.tempsTotal=(Number(u.tempsTotal)||0)+min*60;u.dureeMin=(Number(u.dureeMin)||0)+min;u.bonus=true;u.bonusOnly=!!u.bonusOnly;u.bonusSource='patron';u.bonusDurationMin=min;u.bonusMinutesAdded=(Number(u.bonusMinutesAdded)||0)+min;u.bonusGrantedAt=now;u.updatedAt=now;finalTs=u.paused?0:u.finTs;rootWriteActive(root,Object.assign({},p,local),idx,u);sid=u.sessionId||sid;}
       return root;
     },undefined,false);
     if(!res.committed)return showToast('⚠️ Le poste a changé sur un autre appareil');if(res.snapshot&&typeof res.snapshot.val==='function')DB._cache=res.snapshot.val()||DB._cache;closeModal('mo-owner-bonus');
     const finTexte=finalTs?ownerFmtClock(finalTs):(local.paused?'EN PAUSE':'—');ownerPersistActivity(p.num+' — 🎁 Bonus offert',nom+' · '+min+' min offertes · Début '+ownerFmtClock(now)+' · Fin prévue '+finTexte+' · Tarif inchangé','0 F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'bonus_offert',bonus:true,bonusOnly:startedNew,dureeSec:min*60,debutTs:now,finPrevueTs:finalTs,montant:0});
-    if(startedNew){ownerAnnounceStartOnce(sid,p.num,min,true);if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'🎁 '+p.num+' bonus '+min+' min · TV allumée':'🎁 '+p.num+' bonus activé · commande TV non confirmée');}else showToast('🎁 '+p.num+' bonus '+min+' min activé');}
+    if(startedNew){ownerAnnounceStartOnce(sid,p.num,min,true);showToast('🎁 '+p.num+' bonus '+min+' min · TV confirmée');}
     else{ownerSpeak('Bonus client fidèle. '+ownerSpeechPosteName(p.num)+' reçoit '+min+' minutes supplémentaires.');showToast('🎁 +'+min+' min offertes sur '+p.num+' · recette inchangée');}
     renderControl();renderHome();ownerRenderJournal();
   }catch(e){console.log('Bonus Patron:',e);showToast('⚠️ Bonus impossible — vérifiez Internet');}
@@ -1012,9 +1034,62 @@ async function ownerConfirmCancel(){
   finally{setTimeout(()=>ownerCancelLocks.delete(lock),800);}
 }
 
+const ownerStartInFlight=new Set();
 async function ownerConfirmStart(){
-  const postes=DB.get('postes')||[];const p=postes[ownerPosteIdx];if(!p)return;const nom=document.getElementById('owner-client').value.trim();if(!nom){showToast('⚠️ Entrez le nom du client');return;}const tarif=ownerTarifs(p).find(t=>Number(t.min)===Number(ownerSelMin));if(!tarif){showToast('⚠️ Choisissez une durée');return;}const prix=money(tarif.prix),min=Number(tarif.min)||0;if(!prix||!min)return showToast('⚠️ Tarif invalide');const now=Date.now(),sid=String(p.num)+'-'+now+'-pat';const state={actif:true,client:nom,finTs:now+min*60000,tempsTotal:min*60,dureeMin:min,paused:false,pauseRemainingSec:0,montantSession:prix,montantJourSession:prix,paiementsSession:{},sessionId:sid,startedAt:now,updatedAt:now};state.paiementsSession[ownerSelPay]=prix;
-  try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,p,ownerPosteIdx)||{};if(remote.actif)return;rootWriteActive(root,p,ownerPosteIdx,state);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.sessionsParPoste[p.num]=Math.max(0,Number(ss.sessionsParPoste[p.num])||0)+1;ss.payStats[ownerSelPay]=money(ss.payStats[ownerSelPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Ce poste vient d’être activé ailleurs');return;}closeModal('mo-owner-start');ownerPersistActivity(p.num+' — Session démarrée par le patron',nom+' · '+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'demarrage',montant:prix});ownerAnnounceStartOnce(sid,p.num,min,false);if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'✅ '+p.num+' activé et TV allumée':'⚡ '+p.num+' activé · TV à allumer manuellement');}else showToast('✅ '+p.num+' activé');renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Activation impossible — vérifiez Internet');}
+  const postes=DB.get('postes')||[],idx=ownerPosteIdx,p=postes[idx];if(!p)return;
+  if(ownerStartInFlight.has(idx))return;ownerStartInFlight.add(idx);
+  let sid='',reserved=false,powered=false;
+  try{
+    const nom=document.getElementById('owner-client').value.trim();
+    if(!nom)return showToast('⚠️ Entrez le nom du client');
+    const tar=ownerTarifs(p).find(t=>Number(t.min)===Number(ownerSelMin));
+    if(!tar)return showToast('⚠️ Choisissez une durée');
+    const prix=money(tar.prix),min=Number(tar.min)||0,pay=ownerSelPay;
+    if(!prix||!min)return showToast('⚠️ Tarif invalide');
+    if(!fbRoot)return showToast('⚠️ Firebase indisponible');
+    if(!String(p.devid||'').trim())return showToast('⚠️ '+p.num+' : prise Tuya non configurée. Aucun temps ni recette démarrés.');
+    sid=p.num+'-'+Date.now()+'-pat-'+Math.random().toString(36).slice(2,6);
+    const reservation=await fbRoot.transaction(root=>{
+      root=root||{};const r=rootReadActive(root,p,idx)||{};
+      if(r.actif||(r.starting&&Date.now()<Number(r.startingUntil||0))||(r.cleanup&&Date.now()<Number(r.cleanupUntil||0)))return undefined;
+      rootWriteActive(root,p,idx,{actif:false,starting:true,startingUntil:Date.now()+45000,
+        client:nom,sessionId:sid,finTs:0,paused:false,montantSession:0,updatedAt:Date.now()});
+      return root;
+    },undefined,false);
+    if(!reservation||!reservation.committed)return showToast('⚠️ Poste déjà occupé ou activation en cours');
+    reserved=true;showToast('⏳ Vérification prise '+p.num);
+    powered=await ownerTuyaCommand(p,true);
+    if(!powered)throw new Error('Prise Tuya non confirmée ON : temps non activé');
+    const tx=await fbRoot.transaction(root=>{
+      root=root||{};const r=rootReadActive(root,p,idx)||{};
+      if(!r.starting||r.sessionId!==sid||r.actif)return undefined;
+      const now=Date.now();const state={actif:true,starting:false,startingUntil:0,client:nom,
+        finTs:now+min*60000,tempsTotal:min*60,dureeMin:min,paused:false,pauseRemainingSec:0,
+        montantSession:prix,montantJourSession:prix,paiementsSession:{[pay]:prix},
+        sessionId:sid,startedAt:now,updatedAt:now};
+      rootWriteActive(root,p,idx,state);
+      const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;
+      ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;
+      ss.sessionsParPoste[p.num]=Math.max(0,Number(ss.sessionsParPoste[p.num])||0)+1;
+      ss.payStats[pay]=money(ss.payStats[pay])+prix;
+      root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date(now))]=deepClone(ss);
+      return root;
+    },undefined,false);
+    if(!tx||!tx.committed)throw new Error('Nouvelle séance détectée : activation annulée');
+    reserved=false;if(tx.snapshot)DB._cache=tx.snapshot.val()||DB._cache;
+    closeModal('mo-owner-start');ownerPersistActivity(p.num+' — Session démarrée par le patron',
+      nom+' · '+min+' min',prix.toLocaleString('fr-FR')+' F',
+      {poste:p.num,client:nom,sessionId:sid,typeActivite:'demarrage',montant:prix});
+    ownerAnnounceStartOnce(sid,p.num,min,false);renderControl();renderHome();
+    showToast('✅ '+p.num+' — prise Tuya ON confirmée, minuteur activé. Vérifie que la TV sort de veille.');
+  }catch(e){
+    console.warn('Activation Patron:',e);showToast('⚠️ '+(e&&e.message||'Activation impossible'));
+    if(reserved){try{await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,p,idx)||{};
+      if(!r.starting||r.sessionId!==sid)return undefined;
+      rootWriteActive(root,p,idx,blankRemoteActive(r));return root;},undefined,false);}catch(ex){console.warn(ex);}}
+    if(powered&&p.devid){try{const snap=await fbRoot.once('value');const r=rootReadActive(snap.val()||{},p,idx)||{};
+      if(!r.actif&&!r.starting)await ownerReliableOff(p);}catch(ex){console.warn(ex);}}
+  }finally{setTimeout(()=>ownerStartInFlight.delete(idx),650);}
 }
 
 async function ownerConfirmPlus(){
@@ -1023,7 +1098,27 @@ async function ownerConfirmPlus(){
 }
 
 async function ownerPause(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(!a.actif||a.paused)return;const rest=remainingActive(a),sid=a.sessionId||'';try{const res=await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||(sid&&r.sessionId&&r.sessionId!==sid))return;rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},r,{paused:true,pauseRemainingSec:rest,finTs:0,updatedAt:Date.now()}));return root;},undefined,false);if(!res.committed)return showToast('⚠️ Poste modifié ailleurs');ownerSpeak(ownerSpeechPosteName(p.num)+', temps mis en pause.');ownerPersistActivity(p.num+' — Pause par le patron',(a.client||'Client')+' · '+fmtRest(rest)+' restantes','',{poste:p.num,sessionId:sid,typeActivite:'pause'});if(p.devid)await ownerReliableOff(p);showToast('⏸ '+p.num+' en pause');}catch(e){showToast('⚠️ Pause impossible');}}
-async function ownerResume(i){const postes=DB.get('postes')||[];const p=postes[i];if(!p)return;const a=activeForPoste(p,i);if(!a.actif||!a.paused)return;const sid=a.sessionId||'';try{const res=await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||!r.paused||(sid&&r.sessionId&&r.sessionId!==sid))return;const rest=Math.max(0,Number(r.pauseRemainingSec)||0);if(rest<=0)return;rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},r,{paused:false,pauseRemainingSec:0,finTs:Date.now()+rest*1000,updatedAt:Date.now()}));return root;},undefined,false);if(!res.committed)return showToast('⚠️ Poste modifié ailleurs');ownerSpeak(ownerSpeechPosteName(p.num)+', temps repris.');ownerPersistActivity(p.num+' — Reprise par le patron',(a.client||'Client'),'',{poste:p.num,sessionId:sid,typeActivite:'reprise'});if(p.devid)await ownerTuyaCommand(p,true);showToast('▶ '+p.num+' repris');}catch(e){showToast('⚠️ Reprise impossible');}}
+async function ownerResume(i){
+  const postes=DB.get('postes')||[],p=postes[i];if(!p)return;
+  const a=activeForPoste(p,i)||{},sid=a.sessionId||'';
+  if(!a.actif||!a.paused)return;
+  try{
+    if(p.devid&&!(await ownerTuyaCommand(p,true)))return showToast('⚠️ TV non confirmée ON — temps toujours en pause');
+    const tx=await fbRoot.transaction(root=>{
+      root=root||{};const r=rootReadActive(root,Object.assign({},p,a),i)||{};
+      if(!r.actif||!r.paused||(sid&&r.sessionId!==sid))return undefined;
+      const rest=Math.max(0,Number(r.pauseRemainingSec)||0);if(!rest)return undefined;
+      rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},r,{paused:false,
+        pauseRemainingSec:0,finTs:Date.now()+rest*1000,updatedAt:Date.now()}));return root;
+    },undefined,false);
+    if(!tx||!tx.committed)return showToast('⚠️ Poste modifié ailleurs');
+    ownerSpeak(ownerSpeechPosteName(p.num)+', temps repris.');
+    ownerPersistActivity(p.num+' — Reprise par le patron',a.client||'Client','',
+      {poste:p.num,sessionId:sid,typeActivite:'reprise'});
+    showToast('▶ '+p.num+' repris — TV confirmée');
+  }catch(e){console.warn(e);showToast('⚠️ Reprise impossible — TV non confirmée');}
+}
+
 async function ownerPowerOff(i){
   const postes=DB.get('postes')||[];
   const p=postes[i];
@@ -1773,6 +1868,39 @@ window.GymProofFree=(function(){
 
   function ensureStatusBannerP(){if(document.getElementById('gz-net-status-p'))return;const top=document.querySelector('.topbar');if(!top)return;const d=document.createElement('div');d.id='gz-net-status-p';d.className='gz-net-status';d.style.display='none';top.insertAdjacentElement('afterend',d);}function setStatusP(text,kind){ensureStatusBannerP();const d=document.getElementById('gz-net-status-p');if(!d)return;if(!text){d.style.display='none';return;}d.style.display='block';d.className='gz-net-status '+(kind||'info');d.textContent=text;}
   async function fetchRoomStatusP(){const u=firebase.auth().currentUser;if(!u)throw new Error('Firebase absent');const token=await u.getIdToken();const r=await fetch(TUYA_WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({tenantKey:currentTenantKey,action:'roomStatus'})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.success)throw new Error(d.error||'Statut Tuya indisponible');return d.devices||[];}
+
+  // V21 : prise allumée hors séance, deux statuts ON puis verrou Firebase avant OFF.
+  const gzOrphanCountsP=Object.create(null);
+  async function gzCheckOrphanP(i,st){
+    const posts=DB.get('postes')||[],p=posts[i];if(!p||!p.devid||!st||st.online!==true||st.switchOn!==true)return;
+    const local=activeForPoste(p,i)||{};
+    if(local.actif||local.starting){gzOrphanCountsP[p.devid]=0;return;}
+    gzOrphanCountsP[p.devid]=(gzOrphanCountsP[p.devid]||0)+1;
+    if(gzOrphanCountsP[p.devid]<2||!fbRoot)return;
+    gzOrphanCountsP[p.devid]=0;
+    const tag='orphan-p-'+Date.now()+'-'+Math.random().toString(36).slice(2,5);
+    let locked=false;
+    try{
+      const tx=await fbRoot.transaction(root=>{
+        root=root||{};const r=rootReadActive(root,p,i)||{};
+        if(r.actif||(r.starting&&Date.now()<Number(r.startingUntil||0))||
+           (r.cleanup&&Date.now()<Number(r.cleanupUntil||0)))return undefined;
+        rootWriteActive(root,p,i,Object.assign({},r,{cleanup:true,cleanupUntil:Date.now()+15000,
+           cleanupTag:tag,updatedAt:Date.now()}));return root;
+      },undefined,false);
+      if(!tx||!tx.committed)return;
+      locked=true;
+      const ok=await ownerReliableOff(p);
+      setStatusP(ok?'🔴 '+p.num+' : prise ON sans séance, coupure confirmée.':
+        '⚠️ '+p.num+' : prise ON sans séance. OFF en attente.',ok?'info':'danger');
+    }catch(e){console.warn('TV hors séance:',e);}finally{
+      if(locked){try{await fbRoot.transaction(root=>{root=root||{};const r=rootReadActive(root,p,i)||{};
+        if(r.cleanupTag!==tag)return undefined;
+        rootWriteActive(root,p,i,Object.assign({},r,{cleanup:false,cleanupUntil:0,cleanupTag:'',updatedAt:Date.now()}));return root;
+      },undefined,false);}catch(e){console.warn(e);}}
+    }
+  }
+
   async function ownerAutoPauseOnly(i,reason){const postes=DB.get('postes')||[],p=postes[i],a=activeForPoste(p,i)||{};if(!p||!a.actif||a.paused)return;const rest=remainingActive(a),sid=a.sessionId||'';try{const res=await fbRoot.transaction(root=>{root=root||{};const rr=rootReadActive(root,Object.assign({},p,a),i)||{};if(!rr.actif||rr.paused||(sid&&rr.sessionId&&rr.sessionId!==sid)||Number(rr.updatedAt||0)!==Number(a.updatedAt||0))return undefined;rootWriteActive(root,Object.assign({},p,a),i,Object.assign({},rr,{paused:true,pauseRemainingSec:rest,finTs:0,pauseReason:reason,updatedAt:Date.now()}));return root;},undefined,false);if(res&&res.committed)ownerPersistActivity(p.num+' — Pause automatique',(a.client||'Client')+' · '+reason+' · '+fmtRest(rest)+' protégées','',{poste:p.num,client:a.client||'',sessionId:sid,typeActivite:'pause_auto'});}catch(e){console.log(e);}}
   const gzOffHistoryP=Object.create(null);
   // V39/V16: confirmer une transition ON -> OFF, jamais un simple statut OFF périmé.
@@ -1812,7 +1940,7 @@ window.GymProofFree=(function(){
         const st=by[p.devid];if(!st)continue;
         const a=activeForPoste(p,i)||{};
         const rec=gzOffHistoryP[p.devid]||(gzOffHistoryP[p.devid]={});
-        if(!a.actif){delete gzOffHistoryP[p.devid];continue;}
+        if(!a.actif){delete gzOffHistoryP[p.devid];await gzCheckOrphanP(i,st);continue;}
         if(gzManualOffConfirmedP(rec,st,a,Date.now())){
           // Transaction Firebase sécurisée par session; les deux appareils ne doublent pas la pause.
           await ownerAutoPauseOnly(i,'prise ON puis OFF confirmée');

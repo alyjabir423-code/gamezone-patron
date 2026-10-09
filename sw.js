@@ -1,4 +1,4 @@
-const CACHE='gamezone-v20-voix-homme';
+const CACHE='gamezone-patron-v22-sync-tuya-verifiee';
 const ASSETS=['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
