@@ -1,6 +1,6 @@
 {
-  "name": "GameZone CI — Patron V27 — Contrôle recettes",
-  "short_name": "GameZone Patron",
+  "name": "GameZone Patron V29",
+  "short_name": "GZ Patron",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
