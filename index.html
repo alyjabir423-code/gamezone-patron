@@ -213,12 +213,76 @@ button,.ni,.ctl-btn{touch-action:manipulation}
 .gz-yellow-fill{height:100%;background:#facc15;border-radius:7px;transition:width 1s linear;box-shadow:0 0 5px #facc1570}
 .gz-yellow-meta{font-size:10px;color:#fde68a;margin:4px 0 3px;font-variant-numeric:tabular-nums}
 
-/* V40/V17 — Barre Bonus + Gym, mêmes paliers que les postes TV. */
+/* V42/V19 — Barre Bonus + Gym, mêmes paliers que les postes TV. */
 .gz-yellow-fill.gz-progress-ok{background:#22c55e;box-shadow:0 0 6px #22c55e70}
 .gz-yellow-fill.gz-progress-mid{background:#facc15;box-shadow:0 0 6px #facc1570}
 .gz-yellow-fill.gz-progress-low{background:#ef4444;box-shadow:0 0 7px #ef444480}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
+
+<script>
+/* GAMEZONE VOIX HOMME : réglage local à chaque appareil, aucune écriture Firebase. */
+(function(){
+ 'use strict';
+ const PREF='gz_male_french_voice_v1';
+ const confirmedMale=/(?:\b(?:Thomas|Henri|Paul|Daniel|Pierre|Nicolas|Hugo|Louis|Mathieu|Alain|Jacques|Julien|Michel|Fran[cç]ois|Claude|Alexandre|G[eé]rard|Bastien|Victor|Alban|Felix|F[eé]lix|Bernard|Lucien|George|Guy|Jean|Martin|Marcel|Franck)\b|\bmale\b|\bmasculin\b|\bhomme\b|fr-FR-(?:Standard-G|Neural2-G|Wavenet-G|Studio-D|Polyglot-1))/i;
+ const confirmedFemale=/(?:\b(?:Amelie|Am[eé]lie|Audrey|C[eé]line|Sophie|Julie|Marie|Alice|Virginie|Eloise|[eÉ]lo[iï]se|Margaux|Lucie|Jeanne|Female|F[eé]minin)\b)/i;
+ const keyFor=v=>String(v.voiceURI||v.name||'')+'|'+String(v.lang||'');
+ function voices(){try{return (window.speechSynthesis.getVoices()||[]).filter(v=>/^fr(?:[-_]|$)/i.test(v.lang||''));}catch(e){return [];}}
+ function identifiedMale(v){const name=String(v.name||'')+' '+String(v.voiceURI||'');return confirmedMale.test(name)&&!confirmedFemale.test(name);}
+ function selectedVoice(){
+   const vs=voices();let wanted='';try{wanted=localStorage.getItem(PREF)||'';}catch(e){}
+   if(wanted){const found=vs.find(v=>keyFor(v)===wanted);if(found)return found;}
+   return vs.find(identifiedMale)||null;
+ }
+ let panel=null,optionList=null,testedKey='';
+ function status(t){const el=document.getElementById('gz-voice-status');if(el)el.textContent=t;}
+ function refresh(){
+   if(!optionList)return;
+   const available=voices(),saved=selectedVoice(),last=optionList.value; optionList.replaceChildren();
+   const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='— Choisir une voix française —';optionList.appendChild(placeholder);
+   for(const v of available){const item=document.createElement('option');item.value=keyFor(v);item.textContent=(identifiedMale(v)?'♂ ':'')+v.name+' ('+v.lang+')';optionList.appendChild(item);}
+   optionList.value=available.some(v=>keyFor(v)===last)?last:(saved?keyFor(saved):'');
+   status(available.length?'Écoute le test, puis enregistre uniquement si la voix est masculine.':'Aucune voix française disponible. Installe une voix française masculine dans les réglages de synthèse vocale du téléphone, puis rouvre cette fenêtre.');
+ }
+ function openPanel(){
+   if(!panel){
+      panel=document.createElement('div');panel.id='gz-male-voice-panel';panel.style.cssText='position:fixed;inset:0;z-index:1000100;background:rgba(0,0,0,.84);display:flex;align-items:center;justify-content:center;padding:16px';
+      const area=document.createElement('div');area.style.cssText='width:min(100%,440px);max-height:85vh;overflow:auto;background:#151a2a;border:1px solid #475569;border-radius:15px;padding:18px;color:#f8fafc;font:14px system-ui,sans-serif';
+      area.innerHTML='<h3 style="margin:0 0 9px;font-size:19px">🎙️ Choisir une voix d’homme</h3><p style="font-size:12px;line-height:1.6;color:#cbd5e1">Les voix proviennent du téléphone. <b>Écoute le test</b> et enregistre seulement une voix masculine. Une voix féminine ne sera plus choisie automatiquement.</p><label for="gz-voice-picker" style="display:block;margin:10px 0 5px">Voix française</label><select id="gz-voice-picker" style="display:block;width:100%;min-height:42px;background:#1e293b;color:#fff;border:1px solid #64748b;border-radius:8px;font-size:16px"></select><div id="gz-voice-status" style="font-size:12px;color:#facc15;margin:12px 0;line-height:1.5"></div><div style="display:flex;flex-wrap:wrap;gap:8px"><button id="gz-voice-test" type="button">▶ Écouter</button><button id="gz-voice-save" type="button">✓ C’est une voix d’homme</button><button id="gz-voice-close" type="button">Fermer</button></div>';
+      area.querySelectorAll('button').forEach(b=>{b.style.cssText='flex:1;min-width:125px;border:1px solid #64748b;background:#1e293b;color:#fff;border-radius:9px;padding:12px 8px;font-size:12px;font-weight:700';});
+      panel.appendChild(area);document.body.appendChild(panel);optionList=area.querySelector('#gz-voice-picker');
+      area.querySelector('#gz-voice-test').addEventListener('click',()=>{
+        const v=voices().find(x=>keyFor(x)===optionList.value);if(!v)return status('Choisis d’abord une voix.');
+        try{
+          window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('Bonjour. Je suis la voix de GameZone. Poste un activé pour trente minutes.');
+          u.voice=v;u.lang=v.lang||'fr-FR';u.pitch=.85;u.rate=.9;u.volume=1;
+          u.onerror=()=>status('Impossible de jouer cette voix. Choisis une autre voix française.');
+          window.speechSynthesis.speak(u);testedKey=keyFor(v);status('Si tu as bien entendu une voix d’homme, appuie sur « C’est une voix d’homme ».');
+        }catch(e){status('Essai vocal impossible dans ce navigateur.');}
+      });
+      area.querySelector('#gz-voice-save').addEventListener('click',()=>{
+        const key=optionList.value;if(!key||key!==testedKey)return status('Écoute d’abord cette voix avant de la valider.');
+        try{localStorage.setItem(PREF,key);}catch(e){return status('Impossible d’enregistrer le choix localement.');}
+        status('✓ Voix sélectionnée sur ce téléphone.');panel.remove();panel=null;optionList=null;testedKey='';
+      });
+      area.querySelector('#gz-voice-close').addEventListener('click',()=>{panel.remove();panel=null;optionList=null;testedKey='';});
+   }
+   testedKey='';refresh();
+ }
+ function addButton(){
+   const bar=document.querySelector('#app .topbar');if(!bar||document.getElementById('gz-male-voice-button'))return;
+   const b=document.createElement('button');b.id='gz-male-voice-button';b.type='button';b.textContent='🎙️';b.title='Choisir une voix d’homme';b.setAttribute('aria-label','Choisir la voix masculine de GameZone');
+   b.style.cssText='background:#1e293b;color:#fff;border:1px solid #64748b;border-radius:8px;padding:6px 9px;font-size:17px;cursor:pointer;min-width:37px;min-height:35px';
+   b.addEventListener('click',openPanel);
+   const clock=bar.querySelector('.tclock');if(clock&&clock.parentElement)clock.parentElement.insertBefore(b,clock);else bar.appendChild(b);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addButton);else addButton();
+ try{window.speechSynthesis.addEventListener('voiceschanged',()=>{if(panel)refresh();});}catch(e){}
+ window.GZMaleSpeech={selectedVoice,identifiedMale,voices,openPanel};
+})();
+
+</script>
 </head>
 <body>
 
@@ -675,17 +739,16 @@ function ownerTarifs(poste){return (DB.get('tarifs')||[]).filter(t=>(t.console||
 // V10 — annonces vocales Patron robustes + avertissement 5 minutes
 function ownerSpeechPosteName(num){const m=String(num==null?'':num).match(/\d+/);return m?('Poste '+m[0]):String(num||'Poste');}
 let ownerVoiceUtterance=null,ownerVoiceRetryTimer=null,ownerVoicePrimed=false;
-function ownerFrenchVoice(){try{const vs=window.speechSynthesis.getVoices()||[];const male=vs.find(v=>/^fr[-_]/i.test(v.lang||'') && /\b(Thomas|Henri|Paul|Daniel|Pierre|Nicolas|Hugo|Louis|Mathieu|Alain|Jacques|Julien|Michel|Fran[cç]ois|Claude|Alexandre)\b/i.test(v.name||''));
-    return male || vs.find(v=>/^fr[-_]/i.test(v.lang||'') && /France|French|français|francais/i.test((v.name||'')+' '+(v.lang||''))) || vs.find(v=>/^fr[-_]/i.test(v.lang||'')) || null;}catch(e){return null;}}
-function ownerPrimeVoice(){try{if(!('speechSynthesis'in window)||typeof SpeechSynthesisUtterance==='undefined')return false;const s=window.speechSynthesis;s.resume();if(!ownerVoicePrimed){ownerVoicePrimed=true;const w=new SpeechSynthesisUtterance(' ');w.lang='fr-FR';w.volume=0;ownerVoiceUtterance=w;try{s.speak(w);}catch(e){}}return true;}catch(e){return false;}}
-try{document.addEventListener('pointerdown',ownerPrimeVoice,{capture:true,passive:true});document.addEventListener('touchstart',ownerPrimeVoice,{capture:true,passive:true});if('speechSynthesis'in window)window.speechSynthesis.addEventListener?.('voiceschanged',()=>{try{window.speechSynthesis.getVoices();}catch(e){}});}catch(e){}
+function ownerFrenchVoice(){return window.GZMaleSpeech?window.GZMaleSpeech.selectedVoice():null;}
+function ownerPrimeVoice(){try{return !!('speechSynthesis' in window && window.speechSynthesis.getVoices());}catch(e){return false;}}
+try{if('speechSynthesis'in window)window.speechSynthesis.addEventListener?.('voiceschanged',()=>{try{window.speechSynthesis.getVoices();}catch(e){}});}catch(e){}
 function ownerSpeak(text,attempt=0){
   try{
     const msg=String(text||'').trim();if(!msg)return false;
     if(!('speechSynthesis'in window)||typeof SpeechSynthesisUtterance==='undefined'){console.log('Synthèse vocale Patron indisponible');return false;}
     ownerPrimeVoice();const s=window.speechSynthesis;
     if(ownerVoiceRetryTimer){clearTimeout(ownerVoiceRetryTimer);ownerVoiceRetryTimer=null;}
-    const u=new SpeechSynthesisUtterance(msg),v=ownerFrenchVoice();if(v){u.voice=v;u.lang=v.lang||'fr-FR';}else u.lang='fr-FR';u.rate=.90;u.pitch=.83;u.volume=1;ownerVoiceUtterance=u;let started=false;
+    const u=new SpeechSynthesisUtterance(msg),v=ownerFrenchVoice();if(!v){console.warn('GameZone: aucune voix masculine sélectionnée — bouton 🎙️ pour choisir.');return false;}u.voice=v;u.lang=v.lang||'fr-FR';u.rate=.90;u.pitch=.83;u.volume=1;ownerVoiceUtterance=u;let started=false;
     u.onstart=()=>{started=true;};u.onend=()=>{if(ownerVoiceUtterance===u)ownerVoiceUtterance=null;};
     u.onerror=(ev)=>{console.log('Vocal Patron erreur:',ev&&ev.error);if(attempt<1&&ev&&ev.error!=='canceled'&&ev.error!=='interrupted')ownerVoiceRetryTimer=setTimeout(()=>ownerSpeak(msg,attempt+1),350);};
     try{s.cancel();}catch(e){}try{s.resume();}catch(e){}
@@ -706,6 +769,7 @@ function ownerPersistActivity(main,detail,amount,meta={}){
 
 async function ownerTuyaCommand(poste,turnOn){
   if(!poste||!poste.devid||!currentTenantKey)return false;
+  if(turnOn)ownerClearOff(poste); // protection de la nouvelle séance contre les anciens OFF en attente
   try{
     const user=firebase.auth().currentUser;
     if(!user) throw new Error('Session Firebase absente');
@@ -733,7 +797,7 @@ async function ownerReliableOff(poste){
 }
 async function ownerRetryPendingOff(){
   if(!navigator.onLine)return;let q={};try{q=JSON.parse(localStorage.getItem(ownerPendingKey())||'{}');}catch(e){}
-  for(const key of Object.keys(q)){const x=q[key];if(x&&x.devid){const ok=await ownerTuyaCommand(x,false);if(ok){delete q[key];}}}
+  for(const key of Object.keys(q)){const x=q[key];if(x&&x.devid){const posts=DB.get('postes')||[];const j=posts.findIndex(pp=>pp&&pp.devid===x.devid);const live=j>=0?activeForPoste(posts[j],j):null;if(live&&live.actif&&remainingActive(live)>0){delete q[key];continue;}const ok=await ownerTuyaCommand(x,false);if(ok){delete q[key];}}}
   try{localStorage.setItem(ownerPendingKey(),JSON.stringify(q));}catch(e){}
 }
 window.addEventListener('online',ownerRetryPendingOff);setInterval(ownerRetryPendingOff,7000);
@@ -754,11 +818,11 @@ function ownerPosteOrderValue(p,idx){const m=String((p&&p.num)||'').match(/\d+/)
 function ownerOrderedPostesEntries(list){return (list||[]).map((p,i)=>({p,i})).sort((a,b)=>ownerPosteOrderValue(a.p,a.i)-ownerPosteOrderValue(b.p,b.i));}
 
 
-// V40/V17 : vert > 15 minutes ; jaune de 15 à >5 minutes ; rouge de 5 min jusqu'à 00:00.
+// V42/V19 : vert > 10 min ; jaune > 5 à <= 10 min ; rouge <= 5 min jusqu'à 00:00.
 function gzProgressTone(remainingSeconds, paused=false){
   const sec=Math.max(0,Number(remainingSeconds)||0);
   if(sec<=300)return 'gz-progress-low';
-  return (paused||sec<=900)?'gz-progress-mid':'gz-progress-ok';
+  return sec<=600?'gz-progress-mid':'gz-progress-ok';
 }
 
 function renderControl(){
@@ -767,7 +831,9 @@ function renderControl(){
   box.innerHTML=ownerOrderedPostesEntries(postes).map(({p,i})=>{
     const a=activeForPoste(p,i)||{};if(a.actif)actifs++;
     const rest=remainingActive(a),timer=a.actif?fmtRest(rest):'—:——',amount=money(a.montantSession),cls=a.paused?'paused':(a.actif?'active':'');
-    const badge=a.paused?'PAUSE':(a.actif?'EN JEU':'LIBRE');
+    const expired=a.actif&&rest===0&&((!a.paused&&Number(a.finTs)>0)||(a.paused&&Number(a.pauseRemainingSec)<=0));
+    const progressColor=rest<=300?'#ef4444':rest<=600?'#facc15':'#22c55e';
+    const badge=expired?'FIN EN COURS':a.paused?'PAUSE':(a.actif?'EN JEU':'LIBRE');
     const total=Math.max(0,Number(a.tempsTotal)||0);const pct=a.actif&&total>0?Math.max(0,Math.min(100,(rest/total)*100)):0;
     // OFF TV est volontairement réservé à l'interface Patron.
     // Il termine la session à 00:00 SANS retirer le montant déjà encaissé.
@@ -777,10 +843,10 @@ function renderControl(){
     return `<div class="ctl-card ${cls}">
       <div class="ctl-head"><div><div class="ctl-num">${esc(ownerSpeechPosteName(p.num))}</div><div class="ctl-type">${esc(p.type)}</div></div><span class="badge ${a.actif?'b-on':'b-off'}">${badge}</span></div>
       <div class="ctl-timer-row"><div class="ctl-timer ${a.paused?'pause':(a.actif?'on':'free')}">${timer}</div>${a.actif?`<div class="ctl-money">${amount.toLocaleString('fr-FR')} F</div>`:''}</div>
-      <div class="ctl-progress"><div class="ctl-progress-bar" style="width:${pct}%"></div></div>
+      <div class="ctl-progress"><div class="ctl-progress-bar" style="width:${pct}%;background:${progressColor}"></div></div>
       <div class="ctl-client">${a.actif?esc(a.client||'Client'):'Disponible'}${a.actif&&a.bonus?'<span class="bonus-badge">🎁 BONUS</span>':''}</div>
       <div style="font-size:10px;color:var(--muted);margin:3px 0 8px">${p.devid?'🔌 Prise liée':'⚠️ Sans prise'}</div>
-      <div class="ctl-actions">${!a.actif?`<button class="ctl-btn ctl-start" style="background:#7c3aed;border-color:#8b5cf6;color:#fff" onclick="ownerOpenStart(${i})">DÉMARRER</button>`:activeButtons}</div>
+      <div class="ctl-actions">${expired?'<span style="font-size:11px;color:#fca5a5">⏳ Temps terminé — libération automatique</span>':!a.actif?`<button class="ctl-btn ctl-start" style="background:#7c3aed;border-color:#8b5cf6;color:#fff" onclick="ownerOpenStart(${i})">DÉMARRER</button>`:activeButtons}</div>
     </div>`;
   }).join('')+ownerRenderBonusCard(postes);
   const c=document.getElementById('ctl-active-count');if(c)c.textContent=actifs+' actif'+(actifs>1?'s':'');
@@ -811,7 +877,6 @@ function ownerBonusPostChanged(){
 async function ownerConfirmBonus(){
   const postes=DB.get('postes')||[],idx=Number(document.getElementById('owner-bonus-poste').value)||0,p=postes[idx];if(!p)return;
   const local=activeForPoste(p,idx)||{},min=Math.max(1,Number(ownerBonusMin)||30),now=Date.now();let nom=(document.getElementById('owner-bonus-client').value||'').trim();if(local.actif)nom=local.client||nom;if(!nom)return showToast('⚠️ Entrez le nom du client');
-  ownerPrimeVoice();
   try{
     let sid=local.sessionId||('bonus-'+String(p.num)+'-'+now),startedNew=!local.actif,finalTs=0;
     const res=await fbRoot.transaction(root=>{
@@ -949,7 +1014,7 @@ async function ownerConfirmCancel(){
 
 async function ownerConfirmStart(){
   const postes=DB.get('postes')||[];const p=postes[ownerPosteIdx];if(!p)return;const nom=document.getElementById('owner-client').value.trim();if(!nom){showToast('⚠️ Entrez le nom du client');return;}const tarif=ownerTarifs(p).find(t=>Number(t.min)===Number(ownerSelMin));if(!tarif){showToast('⚠️ Choisissez une durée');return;}const prix=money(tarif.prix),min=Number(tarif.min)||0;if(!prix||!min)return showToast('⚠️ Tarif invalide');const now=Date.now(),sid=String(p.num)+'-'+now+'-pat';const state={actif:true,client:nom,finTs:now+min*60000,tempsTotal:min*60,dureeMin:min,paused:false,pauseRemainingSec:0,montantSession:prix,montantJourSession:prix,paiementsSession:{},sessionId:sid,startedAt:now,updatedAt:now};state.paiementsSession[ownerSelPay]=prix;
-  ownerPrimeVoice();try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,p,ownerPosteIdx)||{};if(remote.actif)return;rootWriteActive(root,p,ownerPosteIdx,state);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.sessionsParPoste[p.num]=Math.max(0,Number(ss.sessionsParPoste[p.num])||0)+1;ss.payStats[ownerSelPay]=money(ss.payStats[ownerSelPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Ce poste vient d’être activé ailleurs');return;}closeModal('mo-owner-start');ownerPersistActivity(p.num+' — Session démarrée par le patron',nom+' · '+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'demarrage',montant:prix});ownerAnnounceStartOnce(sid,p.num,min,false);if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'✅ '+p.num+' activé et TV allumée':'⚡ '+p.num+' activé · TV à allumer manuellement');}else showToast('✅ '+p.num+' activé');renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Activation impossible — vérifiez Internet');}
+  try{const res=await fbRoot.transaction(root=>{root=root||{};const remote=rootReadActive(root,p,ownerPosteIdx)||{};if(remote.actif)return;rootWriteActive(root,p,ownerPosteIdx,state);const ss=freshSessionSnapshotFromRoot(root);ss.recettes=money(ss.recettes)+prix;ss.parPoste[p.num]=money(ss.parPoste[p.num])+prix;ss.sessionsParPoste[p.num]=Math.max(0,Number(ss.sessionsParPoste[p.num])||0)+1;ss.payStats[ownerSelPay]=money(ss.payStats[ownerSelPay])+prix;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(!res.committed){showToast('⚠️ Ce poste vient d’être activé ailleurs');return;}closeModal('mo-owner-start');ownerPersistActivity(p.num+' — Session démarrée par le patron',nom+' · '+min+' min',prix.toLocaleString('fr-FR')+' F',{poste:p.num,client:nom,sessionId:sid,typeActivite:'demarrage',montant:prix});ownerAnnounceStartOnce(sid,p.num,min,false);if(p.devid){const ok=await ownerTuyaCommand(p,true);showToast(ok?'✅ '+p.num+' activé et TV allumée':'⚡ '+p.num+' activé · TV à allumer manuellement');}else showToast('✅ '+p.num+' activé');renderControl();renderHome();}catch(e){console.log(e);showToast('⚠️ Activation impossible — vérifiez Internet');}
 }
 
 async function ownerConfirmPlus(){
@@ -1035,9 +1100,10 @@ async function ownerPowerOff(i){
 async function ownerFinishExpired(i,p,a){
   const sid=a.sessionId||'';const key=sid||('idx-'+i);if(ownerFinishLocks.has(key))return;ownerFinishLocks.add(key);
   try{
-    if(p.devid)await ownerReliableOff(p);
+    // Première coupure immédiate ; en cas d’échec la file reprend les essais sans bloquer la libération du poste.
+    if(p.devid){const ok=await ownerTuyaCommand(p,false);if(ok)ownerClearOff(p);else ownerQueueOff(p);}
     const res=await fbRoot.transaction(root=>{root=root||{};root.closed_sessions=root.closed_sessions||{};if(sid&&root.closed_sessions[sid])return;const r=rootReadActive(root,Object.assign({},p,a),i)||{};if(!r.actif||(sid&&r.sessionId&&r.sessionId!==sid))return;rootWriteActive(root,Object.assign({},p,a),i,blankRemoteActive(r));const ss=freshSessionSnapshotFromRoot(root);if(!a.bonusOnly)ss.count=Math.max(0,Number(ss.count)||0)+1;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);if(sid)root.closed_sessions[sid]={status:a.bonusOnly?'bonus_termine':'terminee_auto',ts:Date.now(),dateKey:businessDateKey(new Date()),poste:p.num,bonus:!!a.bonus};return root;},undefined,false);
-    if(res.committed){ownerSpeak((a.bonusOnly?'Bonus terminé pour ':'Temps terminé pour ')+ownerSpeechPosteName(p.num)+'.');if(a.bonusOnly)ownerPersistActivity(p.num+' — 🎁 Bonus terminé',(a.client||'Client')+' · bonus offert terminé','0 F',{poste:p.num,client:a.client||'',sessionId:sid,typeActivite:'bonus_termine',bonus:true,tempsRestantSec:0,montant:0});else ownerPersistActivity(p.num+' — Temps écoulé',(a.client||'Client')+' · fin automatique',money(a.montantSession).toLocaleString('fr-FR')+' F',{poste:p.num,client:a.client||'',sessionId:sid,typeActivite:'terminee_auto',tempsRestantSec:0,montant:money(a.montantSession)});}
+    if(res.committed){if(res.snapshot&&typeof res.snapshot.val==='function')DB._cache=res.snapshot.val()||DB._cache;ownerSpeak((a.bonusOnly?'Bonus terminé pour ':'Temps terminé pour ')+ownerSpeechPosteName(p.num)+'.');if(a.bonusOnly)ownerPersistActivity(p.num+' — 🎁 Bonus terminé',(a.client||'Client')+' · bonus offert terminé','0 F',{poste:p.num,client:a.client||'',sessionId:sid,typeActivite:'bonus_termine',bonus:true,tempsRestantSec:0,montant:0});else ownerPersistActivity(p.num+' — Temps écoulé',(a.client||'Client')+' · fin automatique',money(a.montantSession).toLocaleString('fr-FR')+' F',{poste:p.num,client:a.client||'',sessionId:sid,typeActivite:'terminee_auto',tempsRestantSec:0,montant:money(a.montantSession)});}
   }catch(e){console.log('Fin patron:',e);}finally{setTimeout(()=>ownerFinishLocks.delete(key),1500);}
 }
 
@@ -1046,7 +1112,7 @@ setInterval(async()=>{
   if(!loggedIn||ownerTimerBusy)return;ownerTimerBusy=true;
   try{
     await ownerEnsureDailyRollover();const postes=DB.get('postes')||[];
-    for(let i=0;i<postes.length;i++){const p=postes[i],a=activeForPoste(p,i)||{};if(a.actif&&!a.paused&&Number(a.finTs)>0){const rest=remainingActive(a);if(rest<=300&&rest>0)ownerAnnounceFiveOnce(p,a);if(Date.now()>=Number(a.finTs))await ownerFinishExpired(i,p,a);}}
+    for(let i=0;i<postes.length;i++){const p=postes[i],a=activeForPoste(p,i)||{};if(a.actif&&((!a.paused&&Number(a.finTs)>0)||(a.paused&&Number(a.pauseRemainingSec)<=0))){const rest=remainingActive(a);if(!a.paused&&rest<=300&&rest>0)ownerAnnounceFiveOnce(p,a);if(rest<=0&&(a.paused||Date.now()>=Number(a.finTs)))await ownerFinishExpired(i,p,a);}}
     const pg=document.getElementById('page-control');if(pg&&pg.classList.contains('active'))renderControl();const rp=document.getElementById('page-report');if(rp&&rp.classList.contains('active'))ownerRenderReport();const hp=document.getElementById('page-history');if(hp&&hp.classList.contains('active'))ownerRenderHistory();
   }finally{ownerTimerBusy=false;}
 },1000);
@@ -1869,9 +1935,9 @@ window.GymProofFree=(function(){
     }catch(e){console.error('Annulation Gym',e);showToast('⚠️ Annulation non enregistrée : '+(e.message||'erreur Firebase'));}
     finally{gymCancellationPendingP=false;}
   };
-  function renderGymP(){const box=document.getElementById('control-postes');if(!box)return;const old=document.getElementById('gym-card-p');if(old)old.remove();const g=gp(),rest=gpRest(g),card=document.createElement('div');card.id='gym-card-p';card.className='ctl-card gym-card '+(g.actif?(g.paused?'paused':'active'):'');const proof=GymProofFree.cardHtml(g,currentTenantKey);card.innerHTML=`<div class="gym-head"><div><b>🏃 CASE 8 — GYMNASTIQUE</b><small>Vélo · Abdos · Jambes · Bras</small></div><span>${g.paused?'PAUSE':(g.actif?'EN COURS':'LIBRE')}</span></div><div class="gz-gym-remaining-label">⏱ TEMPS RESTANT — ${g.paused?'EN PAUSE':'DÉCOMPTE ACTIF'}</div><div class="gym-timer-row"><strong class="gz-gym-clock">${g.actif?gpFmt(rest):'00:00'}</strong><em>${g.actif?money(g.montantSession)+' F':''}</em></div><div class="gz-yellow-progress"><div class="gz-yellow-fill ${g.actif?gzProgressTone(rest,!!g.paused):''}" style="width:${g.actif&&Number(g.tempsTotal)>0?Math.min(100,Math.max(0,rest/Number(g.tempsTotal)*100)).toFixed(2):0}%"></div></div><div class="gym-client">${g.actif?escp(g.client||'Client')+' · '+escp(g.mouvement||'Gymnastique'):'Disponible · 30 min = 100 F · 1 h = 200 F'}</div>${proof}<div class="gym-actions">${!g.actif?`<button onclick="gymOpenP()">DÉMARRER</button>`:(g.paused?`<button class="gz-gym-action" onclick="gymResumeP()">▶ REPRENDRE</button>`:`<button class="gz-gym-action" onclick="gymPauseP()">⏸ PAUSE</button>`)}${g.actif?`<button class="gz-gym-action" onclick="gymPlusP(30)">+ 30 min / 100 F</button><button class="gz-gym-action" onclick="gymPlusP(60)">+ 1 h / 200 F</button><button class="gz-gym-action gz-gym-cancel" onclick="gymOpenCancelP()">↩ ANNULER LA SÉANCE</button>`:''}</div><div class="gym-no-cancel">🔒 Annulation réservée au Patron · Motif obligatoire · Sans effacer les anciennes recettes.</div>`;box.appendChild(card);}
+  function renderGymP(){const box=document.getElementById('control-postes');if(!box)return;const old=document.getElementById('gym-card-p');if(old)old.remove();const g=gp(),rest=gpRest(g),expired=g.actif&&rest===0,card=document.createElement('div');card.id='gym-card-p';card.className='ctl-card gym-card '+(g.actif?(g.paused?'paused':'active'):'');const proof=GymProofFree.cardHtml(g,currentTenantKey);card.innerHTML=`<div class="gym-head"><div><b>🏃 CASE 8 — GYMNASTIQUE</b><small>Vélo · Abdos · Jambes · Bras</small></div><span>${g.paused?'PAUSE':(g.actif?'EN COURS':'LIBRE')}</span></div><div class="gz-gym-remaining-label">⏱ TEMPS RESTANT — ${g.paused?'EN PAUSE':'DÉCOMPTE ACTIF'}</div><div class="gym-timer-row"><strong class="gz-gym-clock">${g.actif?gpFmt(rest):'00:00'}</strong><em>${g.actif?money(g.montantSession)+' F':''}</em></div><div class="gz-yellow-progress"><div class="gz-yellow-fill ${g.actif?gzProgressTone(rest,!!g.paused):''}" style="width:${g.actif&&Number(g.tempsTotal)>0?Math.min(100,Math.max(0,rest/Number(g.tempsTotal)*100)).toFixed(2):0}%"></div></div><div class="gym-client">${g.actif?escp(g.client||'Client')+' · '+escp(g.mouvement||'Gymnastique'):'Disponible · 30 min = 100 F · 1 h = 200 F'}</div>${proof}<div class="gym-actions">${expired?'<span>⏳ Temps terminé — libération automatique</span>':!g.actif?`<button onclick="gymOpenP()">DÉMARRER</button>`:(g.paused?`<button class="gz-gym-action" onclick="gymResumeP()">▶ REPRENDRE</button>`:`<button class="gz-gym-action" onclick="gymPauseP()">⏸ PAUSE</button>`)}${g.actif&&!expired?`<button class="gz-gym-action" onclick="gymPlusP(30)">+ 30 min / 100 F</button><button class="gz-gym-action" onclick="gymPlusP(60)">+ 1 h / 200 F</button><button class="gz-gym-action gz-gym-cancel" onclick="gymOpenCancelP()">↩ ANNULER LA SÉANCE</button>`:''}</div><div class="gym-no-cancel">🔒 Annulation réservée au Patron · Motif obligatoire · Sans effacer les anciennes recettes.</div>`;box.appendChild(card);}
   const oldRC=window.renderControl;window.renderControl=function(){const r=oldRC&&oldRC.apply(this,arguments);try{document.querySelectorAll('#control-postes .ctl-card').forEach(c=>{const badge=c.querySelector('.b-off'),type=c.querySelector('.ctl-type');if(badge&&type&&!/LIBRE/i.test(type.textContent))type.textContent=type.textContent+' · LIBRE';});renderGymP();}catch(e){console.log(e);}return r;};
-  async function finishGymP(){if(gymTimerBusyP)return;const g=gp();if(!g.actif||g.paused||gpRest(g)>0)return;gymTimerBusyP=true;try{const sid=g.sessionId||'';const tx=await fbRoot.transaction(root=>{root=root||{};const x=root.gym||{};if(!x.actif||(sid&&x.sessionId&&x.sessionId!==sid))return undefined;root.gym=Object.assign({},x,{actif:false,finTs:0,paused:false,pauseRemainingSec:0,updatedAt:Date.now(),endedAt:Date.now()});const ss=freshSessionSnapshotFromRoot(root);ss.count=Math.max(0,Number(ss.count)||0)+1;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(tx&&tx.committed){if(tx.snapshot&&typeof tx.snapshot.val==='function')DB._cache=tx.snapshot.val()||DB._cache;ownerSpeak('Gymnastique, temps terminé.');ownerPersistActivity('🏃 Gymnastique — Temps écoulé',(g.client||'Client')+' · '+(g.mouvement||'Gymnastique')+' · session terminée',money(g.montantSession)+' F',{poste:'Gymnastique',client:g.client||'',sessionId:sid,typeActivite:'gym_terminee',mouvement:g.mouvement||'',preuveUrl:g.preuveUrl||'',preuvePath:g.preuvePath||'',preuveKind:g.preuveKind||'',preuveSalle:currentTenantKey});renderControl();ownerRenderReport();}}catch(e){console.log(e);}finally{gymTimerBusyP=false;}}
+  async function finishGymP(){if(gymTimerBusyP)return;const g=gp();if(!g.actif||gpRest(g)>0)return;gymTimerBusyP=true;try{const sid=g.sessionId||'';const tx=await fbRoot.transaction(root=>{root=root||{};const x=root.gym||{};if(!x.actif||(sid&&x.sessionId&&x.sessionId!==sid))return undefined;root.gym=Object.assign({},x,{actif:false,finTs:0,paused:false,pauseRemainingSec:0,updatedAt:Date.now(),endedAt:Date.now()});const ss=freshSessionSnapshotFromRoot(root);ss.count=Math.max(0,Number(ss.count)||0)+1;root.sessions=ss;root.daily=root.daily||{};root.daily[businessDateKey(new Date())]=deepClone(ss);return root;},undefined,false);if(tx&&tx.committed){if(tx.snapshot&&typeof tx.snapshot.val==='function')DB._cache=tx.snapshot.val()||DB._cache;ownerSpeak('Gymnastique, temps terminé.');ownerPersistActivity('🏃 Gymnastique — Temps écoulé',(g.client||'Client')+' · '+(g.mouvement||'Gymnastique')+' · session terminée',money(g.montantSession)+' F',{poste:'Gymnastique',client:g.client||'',sessionId:sid,typeActivite:'gym_terminee',mouvement:g.mouvement||'',preuveUrl:g.preuveUrl||'',preuvePath:g.preuvePath||'',preuveKind:g.preuveKind||'',preuveSalle:currentTenantKey});renderControl();ownerRenderReport();}}catch(e){console.log(e);}finally{gymTimerBusyP=false;}}
   setInterval(()=>{try{if(loggedIn){finishGymP();const c=document.getElementById('gym-card-p');if(c)renderGymP();}}catch(_e){}},1000);
 
   ensureStatusBannerP();

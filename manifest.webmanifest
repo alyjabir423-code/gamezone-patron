@@ -1,10 +1,10 @@
 {
-  "name": "GameZone CI — Patron V18",
+  "name": "GameZone CI — Patron V20",
   "short_name": "GameZone Patron",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0d0d1a",
   "theme_color": "#0d0d1a",
-  "description": "Patron V18 — annonces vocales après confirmation des actions"
+  "description": "V20 — voix masculine sélectionnable, annonces après validation"
 }
