@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="GZ Patron">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.webmanifest">
-<title>GameZone Patron V34 — Fin rapide et iPhone</title>
+<title>GameZone Patron — TEST V62</title>
 <style>
 /* Police système : la page Patron s'affiche même si Google Fonts est inaccessible. */
 :root{--bg:#0a0f1e;--surface:#0f1628;--card:#162040;--border:#1e2d52;--gold:#f59e0b;--gl:#fcd34d;--green:#10b981;--red:#ef4444;--blue:#6366f1;--purple:#8b5cf6;--text:#f0f4ff;--muted:#64748b;--sub:#94a3b8;--fd:'Rajdhani',sans-serif;--fb:'Inter',sans-serif;--r:14px;--rs:9px}
@@ -231,6 +231,11 @@ button,.ni,.ctl-btn{touch-action:manipulation}
 .ctl-card .bonus-owner-btn{margin-top:auto}
 .gym-card .gym-actions{margin-top:auto;padding-top:7px}
 @media(max-width:360px){.control-grid{grid-template-columns:1fr}}
+
+/* V35 : commandes de la case 7, uniquement visibles par le Patron. */
+.gz-bonus-commands{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:9px}
+.gz-bonus-commands .ctl-btn{font-size:10px;min-width:0;min-height:37px;padding:6px 3px;overflow-wrap:anywhere}
+@media(min-width:750px){.gz-bonus-commands{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style>
 <link rel="manifest" href="manifest.webmanifest">
 
@@ -752,10 +757,58 @@ function GZScopedRoomRef(rawRef){
           throw Error('Journée modifiée sur un autre appareil. Recharger avant la vente.');
       }
       await rawRef.update(patch); // Ecriture atomique multipath, pas de .write globale.
+      gzCloudTimerSyncChanges(original,next); // après écriture Firebase confirmée
       return {committed:true,snapshot:snapshot(next)};
     }
   };
 }
+
+
+// V58/V35 : synchronisation de l'alarme OFF auprès du Worker Cloudflare.
+// La seule source de vérité est Firebase, jamais l'heure envoyée par le navigateur.
+let gzCloudSyncAllDone=false;
+const gzCloudSyncTimers=new Map();
+function gzCloudTimerSync(poste, attempt=0){
+  if(!currentTenantKey)return;
+  const k=poste==null?'__all__':String(poste);
+  if(gzCloudSyncTimers.has(k))clearTimeout(gzCloudSyncTimers.get(k));
+  const delay=attempt===0?180:Math.min(60000,1500*Math.pow(2,attempt));
+  gzCloudSyncTimers.set(k,setTimeout(async function(){
+    gzCloudSyncTimers.delete(k);
+    try{
+      const token=await (firebase.auth().currentUser ? firebase.auth().currentUser.getIdToken() : '');
+      if(!token)throw Error('Jeton Firebase absent');
+      const payload={tenantKey:currentTenantKey,action:poste==null?'syncAllTimers':'syncTimer'};
+      if(poste!=null)payload.poste=String(poste);
+      const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),9000);
+      let resp;
+      try {resp=await fetch(TUYA_WORKER_URL,{method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify(payload),cache:'no-store',signal:ctrl.signal});}
+      finally{clearTimeout(timer);}
+      if(!resp.ok)throw Error('Worker alarm HTTP '+resp.status);
+      const result=await resp.json().catch(()=>null);
+      if(!result || result.success!==true)throw Error('Alarme serveur non confirmée');
+    }catch(e){
+      console.warn('Minuterie serveur non synchronisée:',poste,e&&e.message);
+      if(attempt<4)gzCloudTimerSync(poste,attempt+1);
+      else if(typeof loggedIn!=='undefined' && loggedIn)showToast('⚠️ Minuteur serveur non confirmé : garder GameZone ouvert');
+    }
+  },delay));
+}
+function gzCloudTimerSyncChanges(original,next){
+  const a=(original&&original.active_by_poste)||{};
+  const b=(next&&next.active_by_poste)||{};
+  for(const k of new Set([...Object.keys(a),...Object.keys(b)])){
+    if(JSON.stringify(a[k])!==JSON.stringify(b[k])){
+      // Le poste a une clé Firebase déjà encodée, ici il faut revenir au num réel.
+      let poste=k;try{poste=decodeURIComponent(k);}catch(e){}
+      gzCloudTimerSync(poste);
+    }
+  }
+}
+window.addEventListener('online',()=>gzCloudTimerSync(null));
+window.addEventListener('pageshow',()=>{if(gzCloudSyncAllDone)gzCloudTimerSync(null);});
 
 function connectTenant(tenantKey){
   if(fbRoot){ try{fbRoot.off();}catch(e){} }
@@ -946,7 +999,11 @@ function ownerPersistActivity(main,detail,amount,meta={}){
       return false;
     });
   }
-  return fbRoot.child('activity_daily').child(entry.dateKey).child(entry.id).set(entry).then(()=>true).catch(e=>{console.log('Historique partagé:',e);return false;});
+  // Toute action déclenchée par le Patron reste dans son journal privé.
+  // Les actions de gestion ne sont jamais recopiées vers le journal du Gérant.
+  const privateRef=firebase.database().ref('patron_actions/gz_'+String(currentTenantKey)).child(entry.id);
+  entry.actionKind=kind||'autre';entry.uid=(firebase.auth().currentUser&&firebase.auth().currentUser.uid)||'';
+  return privateRef.set(entry).then(()=>true).catch(e=>{console.error('Journal Patron indisponible:',e);showToast('⚠️ Journal privé Patron non enregistré');return false;});
 }
 
 
@@ -1069,17 +1126,30 @@ function renderControl(){
 }
 
 function ownerRenderBonusCard(postes){
-  const actifs=(postes||[]).map((p,i)=>({p,a:activeForPoste(p,i)||{}})).filter(x=>x.a.actif&&x.a.bonus);
-  const details=actifs.length?actifs.map(x=>'<div class="bonus-master-live"><b>'+esc(ownerSpeechPosteName(x.p.num))+'</b> · '+esc(x.a.client||'Client')+' · 🎁 BONUS +'+ownerOfferedMinutes(x.a)+' min gratuites · <strong>bonus restant '+fmtRest(ownerBonusLeftSeconds(x.a))+'</strong> · temps total poste '+fmtRest(remainingActive(x.a))+'</div>').join(''):'<div class="bonus-master-live" style="color:var(--muted)">Aucun bonus en cours.</div>';
+  const actifs=(postes||[]).map((p,i)=>({p,a:activeForPoste(p,i)||{},i})).filter(x=>x.a.actif&&x.a.bonus);
+  const details=actifs.length?actifs.map(x=>{
+    const btn=x.a.paused?'▶ REPRENDRE':'⏸ PAUSE';
+    const click=x.a.paused?'ownerResume':'ownerPause';
+    return '<div class="bonus-master-live"><b>'+esc(ownerSpeechPosteName(x.p.num))+'</b> · '+esc(x.a.client||'Client')+' · 🎁 BONUS +'+ownerOfferedMinutes(x.a)+' min gratuites · <strong>bonus restant '+fmtRest(ownerBonusLeftSeconds(x.a))+'</strong> · temps total poste '+fmtRest(remainingActive(x.a))+
+      '<div class="gz-bonus-commands"><button class="ctl-btn ctl-pause" onclick="'+click+'('+x.i+')">'+btn+'</button>'+
+      '<button class="ctl-btn ctl-plus" onclick="ownerOpenBonusFor('+x.i+')">＋TEMPS BONUS</button>'+
+      '<button class="ctl-btn ctl-cancel" onclick="ownerOpenCancel('+x.i+')">ANNULER SESSION</button>'+
+      '<button class="ctl-btn ctl-off" onclick="ownerPowerOff('+x.i+')">⏻ OFF TV</button></div></div>';
+  }).join(''):'<div class="bonus-master-live" style="color:var(--muted)">Aucun bonus en cours.</div>';
   const bonusTotal=actifs.reduce((sum,x)=>sum+ownerOfferedMinutes(x.a)*60,0);
   const bonusLeft=actifs.reduce((sum,x)=>sum+ownerBonusLeftSeconds(x.a),0);
   const bonusPct=bonusTotal>0?Math.min(100,Math.max(0,100*bonusLeft/bonusTotal)):0;
   const bonusRest=actifs.length?Math.min(...actifs.map(x=>ownerBonusLeftSeconds(x.a))):0;
   const bonusTone=actifs.length?gzProgressTone(bonusRest,actifs.every(x=>x.a.paused)):'';
   const bonusBar='<div class="gz-yellow-meta">⏱ BONUS GRATUIT RESTANT — '+(actifs.length?fmtRest(bonusLeft):'Aucun bonus actif')+'</div><div class="gz-yellow-progress"><div class="gz-yellow-fill '+bonusTone+'" style="width:'+bonusPct.toFixed(2)+'%"></div></div>';
-  return '<div class="ctl-card bonus-master"><div class="bonus-master-title">🎁 CASE 7 — BONUS CLIENT FIDÈLE</div><div class="bonus-master-note">Automatique dès 1 000 F : PS3 +20/+25/+30 min ; PS4/PS5 +15/+20/+25 min selon 1 000/1 500/2 000 F. Bonus manuel Patron conservé, 0 F.</div>'+bonusBar+details+'<button class="bonus-owner-btn" onclick="ownerOpenBonus()">🎁 OFFRIR / AJOUTER UN BONUS</button></div>';
+  return '<div class="ctl-card bonus-master"><div class="bonus-master-title">🎁 CASE 7 — BONUS CLIENT FIDÈLE</div><div class="bonus-master-note">Automatique dès 1 000 F. +TEMPS BONUS ajoute gratuitement des minutes (1 min possible). ANNULER SESSION annule la séance entière et peut retirer la recette : confirmation requise. OFF TV termine sans retirer la recette.</div>'+bonusBar+details+'<button class="bonus-owner-btn" onclick="ownerOpenBonus()">🎁 OFFRIR / AJOUTER UN BONUS</button></div>';
 }
-function ownerChooseBonusDuration(min,el){ownerBonusMin=Math.max(1,Number(min)||30);document.querySelectorAll('#owner-bonus-durations .dctl-opt').forEach(x=>x.classList.remove('sel'));if(el)el.classList.add('sel');ownerBonusPostChanged();}
+function ownerOpenBonusFor(idx){
+  ownerOpenBonus();
+  const sel=document.getElementById('owner-bonus-poste');
+  if(sel){sel.value=String(idx);ownerBonusPostChanged();}
+}
+function ownerChooseBonusDuration(min,el){ownerBonusMin=Math.max(1,Number(min)||30);document.querySelectorAll('#owner-bonus-durations .dctl-opt').forEach(x=>x.classList.remove('sel'));if(el)el.classList.add('sel');const custom=document.getElementById('owner-bonus-custom');if(custom)custom.value='';ownerBonusPostChanged();}
 function ownerOpenBonus(){
   const postes=DB.get('postes')||[];if(!postes.length)return showToast('⚠️ Aucun poste configuré');ownerBonusMin=30;
   const sel=document.getElementById('owner-bonus-poste');sel.innerHTML=ownerOrderedPostesEntries(postes).map(({p,i})=>{const a=activeForPoste(p,i)||{};return '<option value="'+i+'">'+esc(ownerSpeechPosteName(p.num))+' — '+(a.actif?('ACTIF · '+esc(a.client||'Client')):'LIBRE')+'</option>';}).join('');
@@ -1093,7 +1163,7 @@ function ownerBonusPostChanged(){
 }
 async function ownerConfirmBonus(){
   const postes=DB.get('postes')||[],idx=Number(document.getElementById('owner-bonus-poste').value)||0,p=postes[idx];if(!p)return;
-  const local=activeForPoste(p,idx)||{},min=Math.max(1,Number(ownerBonusMin)||30),now=Date.now();let nom=(document.getElementById('owner-bonus-client').value||'').trim();if(local.actif)nom=local.client||nom;if(!nom)return showToast('⚠️ Entrez le nom du client');
+  const local=activeForPoste(p,idx)||{},min=Math.floor(Number(ownerBonusMin)||30),now=Date.now();if(min<1||min>720)return showToast('⚠️ Durée bonus entre 1 et 720 minutes');let nom=(document.getElementById('owner-bonus-client').value||'').trim();if(local.actif)nom=local.client||nom;if(!nom)return showToast('⚠️ Entrez le nom du client');
   try{
     if(!local.actif&&p.devid){const on=await ownerTuyaCommand(p,true);if(!on)return showToast('⚠️ TV non confirmée : bonus NON activé');}
     let sid=local.sessionId||('bonus-'+String(p.num)+'-'+now),startedNew=!local.actif,finalTs=0;
@@ -1717,6 +1787,7 @@ async function startSecurePatron(user){
     DB.onReady(function(){
       patronBootStarted=true;
       loggedIn=true;
+      gzCloudSyncAllDone=true;gzCloudTimerSync(null);
       patronConnectPrivateActions();
       document.getElementById('fb-loading').style.display='none';
       document.getElementById('setup-screen').style.display='none';
@@ -2320,7 +2391,7 @@ window.GymProofFree=(function(){
   ['visibilitychange','pageshow','focus'].forEach(ev=>window.addEventListener(ev,()=>{try{if('speechSynthesis'in window)window.speechSynthesis.resume();}catch(_e){}}));
 
   // Bonus : 20, 30, 60 ou n'importe quelle durée personnalisée.
-  function upgradeBonusModal(){const box=document.getElementById('owner-bonus-durations');if(!box||document.getElementById('owner-bonus-custom'))return;box.insertAdjacentHTML('beforeend','<div class="dctl-opt" onclick="ownerChooseBonusDuration(20,this)"><div class="dctl-min">20 minutes</div><div class="dctl-price">🎁 0 F</div></div>');const wrap=document.createElement('div');wrap.className='ig';wrap.innerHTML='<label>Ou durée personnalisée (minutes)</label><input type="number" id="owner-bonus-custom" min="1" max="720" inputmode="numeric" placeholder="Ex: 15, 20, 45, 90..."><div style="font-size:10px;color:var(--muted);margin-top:4px">Le bonus reste toujours à 0 F.</div>';box.parentElement.insertAdjacentElement('afterend',wrap);document.getElementById('owner-bonus-custom').addEventListener('input',function(){const n=Math.floor(Number(this.value)||0);if(n>0){ownerBonusMin=n;document.querySelectorAll('#owner-bonus-durations .dctl-opt').forEach(x=>x.classList.remove('sel'));}});}
+  function upgradeBonusModal(){const box=document.getElementById('owner-bonus-durations');if(!box||document.getElementById('owner-bonus-custom'))return;box.insertAdjacentHTML('beforeend','<div class="dctl-opt" onclick="ownerChooseBonusDuration(1,this)"><div class="dctl-min">1 minute</div><div class="dctl-price">🎁 0 F</div></div><div class="dctl-opt" onclick="ownerChooseBonusDuration(20,this)"><div class="dctl-min">20 minutes</div><div class="dctl-price">🎁 0 F</div></div>');const wrap=document.createElement('div');wrap.className='ig';wrap.innerHTML='<label>Ou durée personnalisée (minutes)</label><input type="number" id="owner-bonus-custom" min="1" max="720" inputmode="numeric" placeholder="Ex: 15, 20, 45, 90..."><div style="font-size:10px;color:var(--muted);margin-top:4px">Le bonus reste toujours à 0 F.</div>';box.parentElement.insertAdjacentElement('afterend',wrap);document.getElementById('owner-bonus-custom').addEventListener('input',function(){const n=Math.floor(Number(this.value)||0);if(n>0){ownerBonusMin=n;document.querySelectorAll('#owner-bonus-durations .dctl-opt').forEach(x=>x.classList.remove('sel'));}});}
   setTimeout(upgradeBonusModal,200);
 
   function ensureStatusBannerP(){if(document.getElementById('gz-net-status-p'))return;const top=document.querySelector('.topbar');if(!top)return;const d=document.createElement('div');d.id='gz-net-status-p';d.className='gz-net-status';d.style.display='none';top.insertAdjacentElement('afterend',d);}function setStatusP(text,kind){ensureStatusBannerP();const d=document.getElementById('gz-net-status-p');if(!d)return;if(!text){d.style.display='none';return;}d.style.display='block';d.className='gz-net-status '+(kind||'info');d.textContent=text;}
